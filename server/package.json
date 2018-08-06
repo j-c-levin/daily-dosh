@@ -18,6 +18,22 @@
     "url": "https://github.com/j-c-levin/daily-dosh/issues"
   },
   "homepage": "https://github.com/j-c-levin/daily-dosh#readme",
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "@angular/cli": "^6.1.2",
+    "@types/dotenv": "^4.0.3",
+    "@types/node": "^10.5.6",
+    "@types/uuid": "^3.4.3",
+    "dotenv": "^6.0.0",
+    "express": "^4.16.3",
+    "superagent": "^3.8.3",
+    "uuid": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.16.0",
+    "@types/superagent": "^3.8.3",
+    "nodemon": "^1.18.3",
+    "ts-node": "^7.0.0",
+    "tslint": "^5.11.0",
+    "typescript": "^3.0.1"
+  }
 }
