@@ -1,4 +1,4 @@
-import { Transaction } from './monzo.state';
+import { Transaction } from 'src/app/store/state/monzo.state';
 
 export const testTransactions: Transaction[] = [
     {

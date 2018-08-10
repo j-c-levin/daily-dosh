@@ -1,5 +1,10 @@
-<h1>Transactions</h1>
+<h3>Daily budget:</h3>
+<h4>£{{budget$ | async}}</h4>
 
+<h3>Current balance:</h3>
+<h4>£{{balance$ | async}}</h4>
+
+<h3>Transactions</h3>
 <p *ngFor="let transaction of (transactions$ | async)">
   {{transaction.created}}: {{transaction.amount}} - {{transaction.description}}
 </p>

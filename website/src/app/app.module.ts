@@ -1,11 +1,12 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
 
-import { AppRoutingModule } from './app-routing.module';
-import { AppComponent } from './app.component';
+import { AppRoutingModule } from 'src/app/app-routing.module';
+import { AppComponent } from 'src/app/app.component';
 import { NgxsModule } from '@ngxs/store';
-import { MonzoState } from './store/monzo.state';
-import { MainComponent } from './pages/main/main.component';
+import { MonzoState } from 'src/app/store/state/monzo.state';
+import { MainComponent } from 'src/app/pages/main/main.component';
+import { MonzoService } from './services/monzo.service';
 
 @NgModule({
   declarations: [
@@ -17,7 +18,9 @@ import { MainComponent } from './pages/main/main.component';
     AppRoutingModule,
     NgxsModule.forRoot([MonzoState])
   ],
-  providers: [],
+  providers: [
+    MonzoService
+  ],
   bootstrap: [AppComponent]
 })
 export class AppModule { }
