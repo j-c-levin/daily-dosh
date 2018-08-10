@@ -16,7 +16,7 @@ export class MonzoStateModel {
     transactions: Transaction[];
     currentBalance: number;
     dailyBudget: number;
-    startDay: number;
+    startDay: string;
 }
 
 @State<MonzoStateModel>({
@@ -25,7 +25,7 @@ export class MonzoStateModel {
         transactions: [],
         currentBalance: 0,
         dailyBudget: 30,
-        startDay: 1
+        startDay: '2018-08-09T22:05:15.154Z'
     }
 })
 
@@ -49,7 +49,7 @@ export class MonzoState {
     }
 
     @Selector()
-    static getStartDay(state: MonzoStateModel): number {
+    static getStartDay(state: MonzoStateModel): string {
         return state.startDay;
     }
 
