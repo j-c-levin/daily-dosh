@@ -25,7 +25,7 @@ export class MonzoStateModel {
         transactions: [],
         currentBalance: 0,
         dailyBudget: 30,
-        startDay: '2018-08-09T22:05:15.154Z'
+        startDay: '2018-07-26'
     }
 })
 

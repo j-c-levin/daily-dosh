@@ -53,7 +53,7 @@ export class MainComponent implements OnInit {
 
   private moneySpent(transactions: Transaction[]): number {
     return transactions.reduce((currentValue: number, transaction: Transaction) => {
-      currentValue += (transaction.amount / 100);
+      currentValue += -(transaction.amount / 100);
       return currentValue;
     }, 0);
   }
