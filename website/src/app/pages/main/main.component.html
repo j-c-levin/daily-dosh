@@ -6,5 +6,5 @@
 
 <h3>Transactions</h3>
 <p *ngFor="let transaction of (transactions$ | async)">
-  {{transaction.created}}: {{transaction.amount}} - {{transaction.description}}
+  {{transaction.created}}: {{getTransactionValue(transaction.amount)}} - {{transaction.description}}
 </p>

@@ -1,5 +1,5 @@
 import { State, Selector, Action, StateContext } from '@node_modules/@ngxs/store';
-import { UpdateBalance } from '../actions/index';
+import { UpdateTransactions, UpdateBalance } from '../actions/index';
 import { MonzoService } from '../../services/monzo.service';
 import { of } from 'rxjs';
 import { tap, switchMap } from 'rxjs/operators';
@@ -16,6 +16,7 @@ export class MonzoStateModel {
     transactions: Transaction[];
     currentBalance: number;
     dailyBudget: number;
+    startDay: number;
 }
 
 @State<MonzoStateModel>({
@@ -23,7 +24,8 @@ export class MonzoStateModel {
     defaults: {
         transactions: [],
         currentBalance: 0,
-        dailyBudget: 30
+        dailyBudget: 30,
+        startDay: 1
     }
 })
 
@@ -46,8 +48,13 @@ export class MonzoState {
         return state.dailyBudget;
     }
 
-    @Action(UpdateBalance)
-    updateBalance(ctx: StateContext<MonzoStateModel>): void {
+    @Selector()
+    static getStartDay(state: MonzoStateModel): number {
+        return state.startDay;
+    }
+
+    @Action(UpdateTransactions)
+    updateTransactions(ctx: StateContext<MonzoStateModel>): void {
         this.monzoService.getTransactions()
             .pipe(
                 // Set the transactions in the state
@@ -60,5 +67,14 @@ export class MonzoState {
                 })
             )
             .subscribe();
+    }
+
+    @Action(UpdateBalance)
+    updateBalance(ctx: StateContext<MonzoStateModel>, { payload }: UpdateBalance) {
+        const state = ctx.getState();
+        ctx.setState({
+            ...state,
+            currentBalance: payload
+        });
     }
 }
