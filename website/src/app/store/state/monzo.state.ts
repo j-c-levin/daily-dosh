@@ -87,7 +87,7 @@ export class MonzoState {
     @Action(ToggleIgnoreTransaction)
     toggleIgnoreTransaction(ctx: StateContext<MonzoStateModel>, { payload }: ToggleIgnoreTransaction) {
         const state = ctx.getState();
-        const ignored = state.ignoredTransactions;
+        const ignored = JSON.parse(JSON.stringify(state.ignoredTransactions));
         const index = ignored.lastIndexOf(payload);
         // If the id is already in the array its index won't be -1
         (index !== -1) ? ignored.splice(index, 1) : ignored.push(payload);

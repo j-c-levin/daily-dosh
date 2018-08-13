@@ -24,10 +24,9 @@ export class MainComponent implements OnInit {
   ngOnInit() {
     this.store.dispatch(new UpdateTransactions());
     combineLatest(this.transactions$, this.ignoredTransactions$, this.startDay$, this.budget$)
-      .subscribe(([transactions, ignoredTransactions, startDay, budget]) => {
-        console.log('called');
-        this.updateBalance(transactions, ignoredTransactions, startDay, budget);
-      });
+      .subscribe(([transactions, ignoredTransactions, startDay, budget]) =>
+        this.updateBalance(transactions, ignoredTransactions, startDay, budget)
+      );
   }
 
   public getTransactionValue(value: number): number {
