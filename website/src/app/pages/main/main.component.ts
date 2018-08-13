@@ -23,7 +23,6 @@ export class MainComponent implements OnInit {
 
   ngOnInit() {
     this.store.dispatch(new UpdateTransactions());
-    this.ignoredTransactions$.subscribe(_ => console.log('new value', _));
     combineLatest(this.transactions$, this.ignoredTransactions$, this.startDay$, this.budget$)
       .subscribe(([transactions, ignoredTransactions, startDay, budget]) => {
         console.log('called');

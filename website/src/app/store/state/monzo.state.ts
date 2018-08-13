@@ -85,7 +85,7 @@ export class MonzoState {
     }
 
     @Action(ToggleIgnoreTransaction)
-    ToggleIgnoreTransaction(ctx: StateContext<MonzoStateModel>, { payload }: ToggleIgnoreTransaction) {
+    toggleIgnoreTransaction(ctx: StateContext<MonzoStateModel>, { payload }: ToggleIgnoreTransaction) {
         const state = ctx.getState();
         const ignored = state.ignoredTransactions;
         const index = ignored.lastIndexOf(payload);
