@@ -2,9 +2,9 @@
   "name": "daily-dosh",
   "version": "1.0.0",
   "description": "a monzo connected webapp to help budget daily",
-  "main": "index.js",
+  "main": "server/index.js",
   "scripts": {
-    "start": "nodemon --watch src --exec ts-node src/index.ts"
+    "start": "nodemon --watch server --exec ts-node server/index.ts"
   },
   "repository": "git+https://github.com/j-c-levin/daily-dosh.git",
   "keywords": [
