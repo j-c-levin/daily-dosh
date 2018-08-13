@@ -1,17 +1,20 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { Store, Select } from '@ngxs/store';
 import { MonzoState, Transaction } from 'src/app/store/state/monzo.state';
-import { Observable, zip } from 'rxjs';
-import { UpdateTransactions, UpdateBalance } from '../../store/actions/index';
+import { Observable, combineLatest } from 'rxjs';
+import { UpdateTransactions, UpdateBalance, ToggleIgnoreTransaction } from '../../store/actions/index';
+import { map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-main',
   templateUrl: './main.component.html',
-  styleUrls: ['./main.component.css']
+  styleUrls: ['./main.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MainComponent implements OnInit {
 
   @Select(MonzoState.getTransactions) transactions$: Observable<Transaction[]>;
+  @Select(MonzoState.getIgnoredTransactions) ignoredTransactions$: Observable<string[]>;
   @Select(MonzoState.getBalance) balance$: Observable<number>;
   @Select(MonzoState.getBudget) budget$: Observable<number>;
   @Select(MonzoState.getStartDay) startDay$: Observable<string>;
@@ -20,17 +23,33 @@ export class MainComponent implements OnInit {
 
   ngOnInit() {
     this.store.dispatch(new UpdateTransactions());
-    zip(this.transactions$, this.startDay$, this.budget$)
-      .subscribe(([transactions, startDay, budget]) => this.updateBalance(transactions, startDay, budget));
+    this.ignoredTransactions$.subscribe(_ => console.log('new value', _));
+    combineLatest(this.transactions$, this.ignoredTransactions$, this.startDay$, this.budget$)
+      .subscribe(([transactions, ignoredTransactions, startDay, budget]) => {
+        console.log('called');
+        this.updateBalance(transactions, ignoredTransactions, startDay, budget);
+      });
   }
 
   public getTransactionValue(value: number): number {
     return value / 100;
   }
 
-  private updateBalance(transactions: Transaction[], startDay: string, budget: number): void {
+  public isTransactionIgnored(id: string): Observable<string> {
+    return this.ignoredTransactions$.pipe(
+      map((ignored) => {
+        return (ignored.includes(id)) ? 'ignored' : '';
+      })
+    );
+  }
+
+  public toggleTransactionIgnored(id: string): void {
+    this.store.dispatch(new ToggleIgnoreTransaction(id));
+  }
+
+  private updateBalance(transactions: Transaction[], ignoredTransactions: string[], startDay: string, budget: number): void {
     const balance = this.daysSinceStart(startDay) * budget;
-    const difference = this.moneySpent(transactions);
+    const difference = this.moneySpent(transactions, ignoredTransactions);
     this.store.dispatch(new UpdateBalance(balance - difference));
   }
 
@@ -51,9 +70,12 @@ export class MainComponent implements OnInit {
     return Math.floor((utc2 - utc1) / _MS_PER_DAY);
   }
 
-  private moneySpent(transactions: Transaction[]): number {
+  private moneySpent(transactions: Transaction[], ignoredTransactions: string[]): number {
     return transactions.reduce((currentValue: number, transaction: Transaction) => {
-      currentValue += -(transaction.amount / 100);
+      // Only use the transaction value if it is not ignored
+      if (ignoredTransactions.includes(transaction.id) === false) {
+        currentValue += -(transaction.amount / 100);
+      }
       return currentValue;
     }, 0);
   }

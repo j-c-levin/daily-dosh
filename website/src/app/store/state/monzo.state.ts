@@ -1,8 +1,7 @@
 import { State, Selector, Action, StateContext } from '@node_modules/@ngxs/store';
-import { UpdateTransactions, UpdateBalance } from '../actions/index';
+import { UpdateTransactions, UpdateBalance, ToggleIgnoreTransaction } from '../actions/index';
 import { MonzoService } from '../../services/monzo.service';
-import { of } from 'rxjs';
-import { tap, switchMap } from 'rxjs/operators';
+import { tap } from 'rxjs/operators';
 
 export interface Transaction {
     amount: number;
@@ -14,6 +13,7 @@ export interface Transaction {
 
 export class MonzoStateModel {
     transactions: Transaction[];
+    ignoredTransactions: string[];
     currentBalance: number;
     dailyBudget: number;
     startDay: string;
@@ -23,6 +23,7 @@ export class MonzoStateModel {
     name: 'Monzo',
     defaults: {
         transactions: [],
+        ignoredTransactions: [],
         currentBalance: 0,
         dailyBudget: 52,
         startDay: '2018-07-26'
@@ -36,6 +37,11 @@ export class MonzoState {
     @Selector()
     static getTransactions(state: MonzoStateModel): Transaction[] {
         return state.transactions;
+    }
+
+    @Selector()
+    static getIgnoredTransactions(state: MonzoStateModel): string[] {
+        return state.ignoredTransactions;
     }
 
     @Selector()
@@ -75,6 +81,19 @@ export class MonzoState {
         ctx.setState({
             ...state,
             currentBalance: payload
+        });
+    }
+
+    @Action(ToggleIgnoreTransaction)
+    ToggleIgnoreTransaction(ctx: StateContext<MonzoStateModel>, { payload }: ToggleIgnoreTransaction) {
+        const state = ctx.getState();
+        const ignored = state.ignoredTransactions;
+        const index = ignored.lastIndexOf(payload);
+        // If the id is already in the array its index won't be -1
+        (index !== -1) ? ignored.splice(index, 1) : ignored.push(payload);
+        ctx.setState({
+            ...state,
+            ignoredTransactions: ignored
         });
     }
 }
