@@ -48,6 +48,7 @@ export class MonzoState {
 
     @Selector()
     static getBalance(state: MonzoStateModel): number {
+        console.log('selecting balance:', state);
         return state.currentBalance;
     }
 
