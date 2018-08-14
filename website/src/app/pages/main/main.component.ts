@@ -2,7 +2,7 @@ import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { Store, Select } from '@ngxs/store';
 import { MonzoState, Transaction } from 'src/app/store/state/monzo.state';
 import { Observable, combineLatest } from 'rxjs';
-import { UpdateTransactions, UpdateBalance, ToggleIgnoreTransaction, UpdateIgnoredTransactions } from '../../store/actions/index';
+import { UpdateTransactions, ToggleIgnoreTransaction, UpdateIgnoredTransactions } from '../../store/actions/index';
 import { map } from 'rxjs/operators';
 
 @Component({
@@ -52,7 +52,6 @@ export class MainComponent implements OnInit {
     const balance = this.daysSinceStart(startDay) * budget;
     const difference = this.moneySpent(transactions, ignoredTransactions);
     this.balance = balance - difference;
-    // this.store.dispatch(new UpdateBalance());
   }
 
   private daysSinceStart(startDay: string): number {

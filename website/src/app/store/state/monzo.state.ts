@@ -1,5 +1,5 @@
 import { State, Selector, Action, StateContext } from '@node_modules/@ngxs/store';
-import { UpdateTransactions, UpdateBalance, ToggleIgnoreTransaction, UpdateIgnoredTransactions } from '../actions/index';
+import { UpdateTransactions, ToggleIgnoreTransaction, UpdateIgnoredTransactions } from '../actions/index';
 import { MonzoService } from '../../services/monzo.service';
 import { tap } from 'rxjs/operators';
 import { LocalStorage } from '@ngx-pwa/local-storage';
@@ -15,7 +15,6 @@ export interface Transaction {
 export class MonzoStateModel {
     transactions: Transaction[];
     ignoredTransactions: string[];
-    currentBalance: number;
     dailyBudget: number;
     startDay: string;
 }
@@ -25,7 +24,6 @@ export class MonzoStateModel {
     defaults: {
         transactions: [],
         ignoredTransactions: [],
-        currentBalance: 0,
         dailyBudget: 52,
         startDay: '2018-07-26'
     }
@@ -44,12 +42,6 @@ export class MonzoState {
     @Selector()
     static getIgnoredTransactions(state: MonzoStateModel): string[] {
         return state.ignoredTransactions;
-    }
-
-    @Selector()
-    static getBalance(state: MonzoStateModel): number {
-        console.log('selecting balance:', state);
-        return state.currentBalance;
     }
 
     @Selector()
@@ -91,15 +83,6 @@ export class MonzoState {
                     ignoredTransactions
                 });
             });
-    }
-
-    @Action(UpdateBalance)
-    updateBalance(ctx: StateContext<MonzoStateModel>, { payload }: UpdateBalance) {
-        const state = ctx.getState();
-        ctx.setState({
-            ...state,
-            currentBalance: payload
-        });
     }
 
     @Action(ToggleIgnoreTransaction)
