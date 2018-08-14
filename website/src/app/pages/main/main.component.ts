@@ -2,7 +2,7 @@ import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { Store, Select } from '@ngxs/store';
 import { MonzoState, Transaction } from 'src/app/store/state/monzo.state';
 import { Observable, combineLatest } from 'rxjs';
-import { UpdateTransactions, UpdateBalance, ToggleIgnoreTransaction } from '../../store/actions/index';
+import { UpdateTransactions, UpdateBalance, ToggleIgnoreTransaction, UpdateIgnoredTransactions } from '../../store/actions/index';
 import { map } from 'rxjs/operators';
 
 @Component({
@@ -22,7 +22,10 @@ export class MainComponent implements OnInit {
   constructor(private store: Store) { }
 
   ngOnInit() {
-    this.store.dispatch(new UpdateTransactions());
+    this.store.dispatch([
+      new UpdateTransactions(),
+      new UpdateIgnoredTransactions()
+    ]);
     combineLatest(this.transactions$, this.ignoredTransactions$, this.startDay$, this.budget$)
       .subscribe(([transactions, ignoredTransactions, startDay, budget]) =>
         this.updateBalance(transactions, ignoredTransactions, startDay, budget)

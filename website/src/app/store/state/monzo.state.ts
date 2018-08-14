@@ -1,7 +1,8 @@
 import { State, Selector, Action, StateContext } from '@node_modules/@ngxs/store';
-import { UpdateTransactions, UpdateBalance, ToggleIgnoreTransaction } from '../actions/index';
+import { UpdateTransactions, UpdateBalance, ToggleIgnoreTransaction, UpdateIgnoredTransactions } from '../actions/index';
 import { MonzoService } from '../../services/monzo.service';
 import { tap } from 'rxjs/operators';
+import { LocalStorage } from '@ngx-pwa/local-storage';
 
 export interface Transaction {
     amount: number;
@@ -31,8 +32,9 @@ export class MonzoStateModel {
 })
 
 export class MonzoState {
+    ignoredItemsKey = 'ignoredItems';
 
-    constructor(private monzoService: MonzoService) { }
+    constructor(private monzoService: MonzoService, private localStorage: LocalStorage) { }
 
     @Selector()
     static getTransactions(state: MonzoStateModel): Transaction[] {
@@ -75,6 +77,21 @@ export class MonzoState {
             .subscribe();
     }
 
+    @Action(UpdateIgnoredTransactions)
+    updateIgnoredTransactions(ctx: StateContext<MonzoStateModel>): void {
+        this.localStorage.getItem(this.ignoredItemsKey)
+            .subscribe((ignoredTransactions: string[]) => {
+                if (ignoredTransactions === null) {
+                    ignoredTransactions = [];
+                }
+                const state = ctx.getState();
+                ctx.setState({
+                    ...state,
+                    ignoredTransactions
+                });
+            });
+    }
+
     @Action(UpdateBalance)
     updateBalance(ctx: StateContext<MonzoStateModel>, { payload }: UpdateBalance) {
         const state = ctx.getState();
@@ -91,9 +108,10 @@ export class MonzoState {
         const index = ignored.lastIndexOf(payload);
         // If the id is already in the array its index won't be -1
         (index !== -1) ? ignored.splice(index, 1) : ignored.push(payload);
-        ctx.setState({
-            ...state,
-            ignoredTransactions: ignored
-        });
+        this.localStorage.setItem(this.ignoredItemsKey, ignored)
+            .subscribe(() => ctx.setState({
+                ...state,
+                ignoredTransactions: ignored
+            }));
     }
 }

@@ -2,6 +2,10 @@ export class UpdateTransactions {
     static readonly type = '[Monzo] Update Transactions';
 }
 
+export class UpdateIgnoredTransactions {
+    static readonly type = '[Monzo] Update Ignored Transactions';
+}
+
 export class UpdateBalance {
     static readonly type = '[Monzo] Update Balance';
     constructor(public payload: number) { }
