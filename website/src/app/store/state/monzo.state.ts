@@ -108,10 +108,11 @@ export class MonzoState {
         const index = ignored.lastIndexOf(payload);
         // If the id is already in the array its index won't be -1
         (index !== -1) ? ignored.splice(index, 1) : ignored.push(payload);
+        ctx.setState({
+            ...state,
+            ignoredTransactions: ignored
+        });
         this.localStorage.setItem(this.ignoredItemsKey, ignored)
-            .subscribe(() => ctx.setState({
-                ...state,
-                ignoredTransactions: ignored
-            }));
+            .subscribe();
     }
 }
