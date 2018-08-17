@@ -2,6 +2,7 @@ import { NgModule } from '@angular/core';
 import { Routes, RouterModule } from '@angular/router';
 import { MainComponent } from 'src/app/pages/main/main.component';
 import { MonzoGuard } from './guards/monzo.guard';
+import { AuthComponent } from './pages/auth/auth.component';
 
 const routes: Routes = [
   {
@@ -11,7 +12,7 @@ const routes: Routes = [
   },
   {
     path: 'oauth/redirect',
-    component: MainComponent
+    component: AuthComponent
   }
 ];
 
