@@ -23,7 +23,6 @@ export class MainComponent implements OnInit {
   constructor(private store: Store, private activatedRoute: ActivatedRoute) { }
 
   ngOnInit() {
-    this.activatedRoute.queryParams.subscribe(x => console.log('params', x));
     this.store.dispatch([
       new UpdateIgnoredTransactions(),
       new UpdateTransactions()

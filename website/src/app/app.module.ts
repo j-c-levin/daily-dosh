@@ -8,7 +8,6 @@ import { MonzoState } from 'src/app/store/state/monzo.state';
 import { MainComponent } from 'src/app/pages/main/main.component';
 import { MonzoService } from './services/monzo.service';
 import { NgxsReduxDevtoolsPluginModule } from '@ngxs/devtools-plugin';
-import { NgxsLoggerPluginModule } from '@ngxs/logger-plugin';
 import { AuthComponent } from './pages/auth/auth.component';
 
 @NgModule({
@@ -21,8 +20,7 @@ import { AuthComponent } from './pages/auth/auth.component';
     BrowserModule,
     AppRoutingModule,
     NgxsModule.forRoot([MonzoState]),
-    NgxsReduxDevtoolsPluginModule.forRoot(),
-    // NgxsLoggerPluginModule.forRoot()
+    NgxsReduxDevtoolsPluginModule.forRoot()
   ],
   providers: [
     MonzoService
