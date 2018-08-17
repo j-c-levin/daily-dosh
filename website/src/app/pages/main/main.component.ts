@@ -37,11 +37,10 @@ export class MainComponent implements OnInit {
   }
 
   public isTransactionIgnored(id: string): Observable<string> {
-    return this.ignoredTransactions$.pipe(
-      map((ignored) => {
-        return (ignored.includes(id)) ? 'ignored' : '';
-      })
-    );
+    return this.ignoredTransactions$
+      .pipe(
+        map((ignored) => (ignored.includes(id)) ? 'ignored' : '')
+      );
   }
 
   public toggleTransactionIgnored(id: string): void {
