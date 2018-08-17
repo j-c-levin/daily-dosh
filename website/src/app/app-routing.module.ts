@@ -8,6 +8,10 @@ const routes: Routes = [
     path: '',
     component: MainComponent,
     canActivate: [MonzoGuard]
+  },
+  {
+    path: 'oauth/redirect',
+    component: MainComponent
   }
 ];
 

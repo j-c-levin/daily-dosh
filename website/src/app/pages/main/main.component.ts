@@ -4,6 +4,7 @@ import { MonzoState, Transaction } from 'src/app/store/state/monzo.state';
 import { Observable, combineLatest } from 'rxjs';
 import { UpdateTransactions, ToggleIgnoreTransaction, UpdateIgnoredTransactions } from '../../store/actions/index';
 import { map } from 'rxjs/operators';
+import { Router, ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-main',
@@ -19,9 +20,10 @@ export class MainComponent implements OnInit {
   @Select(MonzoState.getStartDay) startDay$: Observable<string>;
   balance: number;
 
-  constructor(private store: Store) { }
+  constructor(private store: Store, private activatedRoute: ActivatedRoute) { }
 
   ngOnInit() {
+    this.activatedRoute.queryParams.subscribe(x => console.log('params', x));
     this.store.dispatch([
       new UpdateIgnoredTransactions(),
       new UpdateTransactions()
