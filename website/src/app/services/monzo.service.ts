@@ -29,7 +29,8 @@ export class MonzoService {
           });
           return this.http.get('https://api.monzo.com/transactions?account_id=acc_00009QPVkYD07hFl8yz9W5&since=2018-07-26', options);
         }),
-        map(response => response.json().transactions)
+        map(response => response.json().transactions),
+        map((transactions: Transaction[]) => transactions.reverse())
       );
   }
 }
