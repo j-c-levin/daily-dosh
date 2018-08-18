@@ -4,7 +4,7 @@
   "description": "a monzo connected webapp to help budget daily",
   "main": "server/index.js",
   "scripts": {
-    "start": "nodemon --watch server --exec ts-node server/index.ts"
+    "start": "nodemon --exec ts-node index.ts"
   },
   "repository": "git+https://github.com/j-c-levin/daily-dosh.git",
   "keywords": [
