@@ -9,6 +9,7 @@ import { MainComponent } from 'src/app/pages/main/main.component';
 import { MonzoService } from './services/monzo.service';
 import { NgxsReduxDevtoolsPluginModule } from '@ngxs/devtools-plugin';
 import { AuthComponent } from './pages/auth/auth.component';
+import { HttpModule } from '@angular/http';
 
 @NgModule({
   declarations: [
@@ -20,7 +21,8 @@ import { AuthComponent } from './pages/auth/auth.component';
     BrowserModule,
     AppRoutingModule,
     NgxsModule.forRoot([MonzoState]),
-    NgxsReduxDevtoolsPluginModule.forRoot()
+    NgxsReduxDevtoolsPluginModule.forRoot(),
+    HttpModule
   ],
   providers: [
     MonzoService

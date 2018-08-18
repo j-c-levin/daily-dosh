@@ -10,7 +10,6 @@ import { environment } from 'src/environments/environment';
 })
 export class MonzoGuard implements CanActivate {
 
-  monzoStorageKey = 'MonzoKey';
   redirectUri = 'http://localhost:4200/oauth/redirect';
   state = '96d2eb6a-c1ab-40db-878e-97af6e04ee8d';
   // tslint:disable-next-line:max-line-length
@@ -22,7 +21,7 @@ export class MonzoGuard implements CanActivate {
     next: ActivatedRouteSnapshot,
     state: RouterStateSnapshot): Observable<boolean> {
     return this.localStorage
-      .getItem(this.monzoStorageKey)
+      .getItem(environment.monzoStorageKey)
       .pipe(
         map(key => key !== null),
         tap(result => {
