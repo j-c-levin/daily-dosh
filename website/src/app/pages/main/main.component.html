@@ -1,3 +1,9 @@
+<h3>Start Date</h3>
+<input type="date"
+       #dateInput
+       [ngModel]="startDay$ | async"
+       (input)="startDateEvent(dateInput.value)" />
+
 <h3>Daily budget:</h3>
 <h4>£{{budget$ | async}}</h4>
 

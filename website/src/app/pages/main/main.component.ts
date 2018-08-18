@@ -2,10 +2,8 @@ import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { Store, Select } from '@ngxs/store';
 import { MonzoState, Transaction } from 'src/app/store/state/monzo.state';
 import { Observable, combineLatest } from 'rxjs';
-import { UpdateTransactions, ToggleIgnoreTransaction, UpdateIgnoredTransactions } from '../../store/actions/index';
+import { ToggleIgnoreTransaction, SetStartDate, LoadParameters } from '../../store/actions/index';
 import { map } from 'rxjs/operators';
-import { Router, ActivatedRoute } from '@angular/router';
-import { LocalStorage } from '@ngx-pwa/local-storage';
 
 @Component({
   selector: 'app-main',
@@ -24,14 +22,15 @@ export class MainComponent implements OnInit {
   constructor(private store: Store) { }
 
   ngOnInit() {
-    this.store.dispatch([
-      new UpdateIgnoredTransactions(),
-      new UpdateTransactions()
-    ]);
+    this.store.dispatch(new LoadParameters());
     combineLatest(this.transactions$, this.ignoredTransactions$, this.startDay$, this.budget$)
       .subscribe(([transactions, ignoredTransactions, startDay, budget]) =>
         this.updateBalance(transactions, ignoredTransactions, startDay, budget)
       );
+  }
+
+  public startDateEvent(date): void {
+    this.store.dispatch(new SetStartDate(date));
   }
 
   public getTransactionValue(value: number): number {

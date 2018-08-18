@@ -1,5 +1,6 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 
 import { AppRoutingModule } from 'src/app/app-routing.module';
 import { AppComponent } from 'src/app/app.component';
@@ -22,7 +23,8 @@ import { HttpModule } from '@angular/http';
     AppRoutingModule,
     NgxsModule.forRoot([MonzoState]),
     NgxsReduxDevtoolsPluginModule.forRoot(),
-    HttpModule
+    HttpModule,
+    FormsModule
   ],
   providers: [
     MonzoService

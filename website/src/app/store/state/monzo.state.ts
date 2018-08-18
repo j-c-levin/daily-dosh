@@ -1,8 +1,17 @@
 import { State, Selector, Action, StateContext } from '@node_modules/@ngxs/store';
-import { UpdateTransactions, ToggleIgnoreTransaction, UpdateIgnoredTransactions } from '../actions/index';
+import {
+    UpdateTransactions,
+    ToggleIgnoreTransaction,
+    UpdateIgnoredTransactions,
+    SetStartDate,
+    LoadParameters,
+    UpdateStartDate
+} from '../actions/index';
 import { MonzoService } from '../../services/monzo.service';
-import { tap } from 'rxjs/operators';
+import { tap, map, switchMap } from 'rxjs/operators';
 import { LocalStorage } from '@ngx-pwa/local-storage';
+import { of, Observable } from 'rxjs';
+import { environment } from 'src/environments/environment';
 
 export interface Transaction {
     amount: number;
@@ -54,6 +63,16 @@ export class MonzoState {
         return state.startDay;
     }
 
+    @Action(LoadParameters)
+    LoadParameters(ctx: StateContext<MonzoStateModel>): Observable<void> {
+        return of(null)
+            .pipe(
+                switchMap(() => ctx.dispatch(new UpdateTransactions())),
+                switchMap(() => ctx.dispatch(new UpdateIgnoredTransactions())),
+                switchMap(() => ctx.dispatch(new UpdateStartDate()))
+            );
+    }
+
     @Action(UpdateTransactions)
     updateTransactions(ctx: StateContext<MonzoStateModel>): void {
         this.monzoService.getTransactions()
@@ -85,6 +104,19 @@ export class MonzoState {
             });
     }
 
+    @Action(UpdateStartDate)
+    UpdateStartDate(ctx: StateContext<MonzoStateModel>): void {
+        this.localStorage
+            .getItem(environment.startDateStorageKey)
+            .subscribe((startDay) => {
+                const state = ctx.getState();
+                ctx.setState({
+                    ...state,
+                    startDay
+                });
+            });
+    }
+
     @Action(ToggleIgnoreTransaction)
     toggleIgnoreTransaction(ctx: StateContext<MonzoStateModel>, { payload }: ToggleIgnoreTransaction) {
         const state = ctx.getState();
@@ -97,6 +129,23 @@ export class MonzoState {
             ignoredTransactions: ignored
         });
         this.localStorage.setItem(this.ignoredItemsKey, ignored)
+            .subscribe();
+    }
+
+    @Action(SetStartDate)
+    SetStartDate(ctx: StateContext<MonzoStateModel>, { date }: SetStartDate) {
+        this.localStorage
+            .setItem(environment.startDateStorageKey, date)
+            .pipe(
+                map(() => {
+                    const state = ctx.getState();
+                    ctx.setState({
+                        ...state,
+                        startDay: date
+                    });
+                }),
+                tap(() => ctx.dispatch(new LoadParameters()))
+            )
             .subscribe();
     }
 }

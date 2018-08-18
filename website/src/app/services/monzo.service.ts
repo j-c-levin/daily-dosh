@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Transaction } from 'src/app/store/state/monzo.state';
 import { testTransactions } from 'src/app/store/test-transactions';
-import { Observable, of } from 'rxjs';
+import { Observable, of, zip } from 'rxjs';
 import { LocalStorage } from '@ngx-pwa/local-storage';
 import { environment } from 'src/environments/environment';
 import { Http, RequestOptions, Headers } from '@angular/http';
@@ -18,16 +18,18 @@ export class MonzoService {
   ) { }
 
   public getTransactions(): Observable<Transaction[]> {
-    return this.localStorage
-      .getItem(environment.monzoStorageKey)
+    return zip(
+      this.localStorage.getItem(environment.monzoStorageKey),
+      this.localStorage.getItem(environment.startDateStorageKey),
+    )
       .pipe(
-        switchMap(key => {
+        switchMap(([accessKey, startDate]) => {
           const options = new RequestOptions({
             headers: new Headers({
-              'Authorization': `Bearer ${key}`
+              'Authorization': `Bearer ${accessKey}`
             })
           });
-          return this.http.get('https://api.monzo.com/transactions?account_id=acc_00009QPVkYD07hFl8yz9W5&since=2018-07-26', options);
+          return this.http.get(`https://api.monzo.com/transactions?account_id=acc_00009QPVkYD07hFl8yz9W5&since=${startDate}`, options);
         }),
         map(response => response.json().transactions),
         map((transactions: Transaction[]) => transactions.reverse())
