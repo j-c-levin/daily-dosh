@@ -5,6 +5,7 @@ import { Observable, combineLatest } from 'rxjs';
 import { UpdateTransactions, ToggleIgnoreTransaction, UpdateIgnoredTransactions } from '../../store/actions/index';
 import { map } from 'rxjs/operators';
 import { Router, ActivatedRoute } from '@angular/router';
+import { LocalStorage } from '@ngx-pwa/local-storage';
 
 @Component({
   selector: 'app-main',
@@ -20,7 +21,7 @@ export class MainComponent implements OnInit {
   @Select(MonzoState.getStartDay) startDay$: Observable<string>;
   balance: number;
 
-  constructor(private store: Store, private activatedRoute: ActivatedRoute) { }
+  constructor(private store: Store) { }
 
   ngOnInit() {
     this.store.dispatch([

@@ -27,7 +27,6 @@ export class AuthComponent implements OnInit {
           const url = `${environment.serverUrl}/auth`;
           return this.http.post(url, body);
         }),
-        tap(res => console.log(res.json())),
         map(res => res.json()),
         switchMap(response => this.localStorage.setItem(environment.monzoStorageKey, response.access_token)),
         tap(() => this.router.navigate(['/']))
