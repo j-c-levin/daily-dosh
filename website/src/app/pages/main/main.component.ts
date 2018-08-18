@@ -19,7 +19,7 @@ export class MainComponent implements OnInit {
   @Select(MonzoState.getIgnoredTransactions) ignoredTransactions$: Observable<string[]>;
   @Select(MonzoState.getBudget) budget$: Observable<number>;
   @Select(MonzoState.getStartDay) startDay$: Observable<string>;
-  balance: number;
+  balance: string;
 
   constructor(private store: Store) { }
 
@@ -52,7 +52,7 @@ export class MainComponent implements OnInit {
   private updateBalance(transactions: Transaction[], ignoredTransactions: string[], startDay: string, budget: number): void {
     const balance = this.daysSinceStart(startDay) * budget;
     const difference = this.moneySpent(transactions, ignoredTransactions);
-    this.balance = balance - difference;
+    this.balance = (balance - difference).toFixed(2);
   }
 
   private daysSinceStart(startDay: string): number {
