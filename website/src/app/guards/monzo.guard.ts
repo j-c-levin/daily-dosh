@@ -28,18 +28,18 @@ export class MonzoGuard implements CanActivate {
           console.log('has key', hasKey);
           const hasCode = Object.keys(next.queryParams).includes('code');
           console.log('has code', hasCode);
-          if (hasKey) {
-            return hasKey;
-          } else if (hasKey === false && hasCode === false) {
-            return hasKey;
+          if (hasKey === false && hasCode) {
+            // this.router.navigateByUrl(`oauth/redirect?code=${next.queryParams.code}&state=${next.queryParams.state}`);
+            console.log('has code');
+            return false;
           } else {
-            this.router.navigateByUrl(`oauth/redirect?code=${next.queryParams.code}&state=${next.queryParams.state}`);
+            return hasKey;
           }
         }),
         tap(result => {
           // Redirect to log in via monzo
           if (result === false) {
-            window.location.href = this.authenticationUrl;
+            // window.location.href = this.authenticationUrl;
           }
         })
       );
