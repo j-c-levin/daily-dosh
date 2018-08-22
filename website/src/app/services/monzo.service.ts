@@ -1,13 +1,11 @@
 import { Injectable } from '@angular/core';
-import { Transaction } from 'src/app/store/state/monzo.state';
-import { testTransactions } from 'src/app/store/test-transactions';
-import { Observable, of, zip } from 'rxjs';
+import { Headers, Http, RequestOptions } from '@angular/http';
 import { LocalStorage } from '@ngx-pwa/local-storage';
-import { environment } from 'src/environments/environment';
-import { Http, RequestOptions, Headers } from '@angular/http';
-import { switchMap, map, tap, combineAll, catchError, filter } from 'rxjs/operators';
 import { Store } from '@ngxs/store';
-import { MonzoStateModel } from '../store/state/monzo.state';
+import { Observable, of, zip } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
+import { Transaction } from 'src/app/store/state/monzo.state';
+import { environment } from 'src/environments/environment';
 
 @Injectable({
   providedIn: 'root'
