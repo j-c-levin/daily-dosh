@@ -98,6 +98,6 @@ app.get('/auth', async (req, res) => {
 
 if (typeof process.env.DEVELOP !== 'undefined') {
     app.listen(3000, () => console.log('Daily Dosh server running'));
-} else {
-    module.exports = app;
 }
+
+module.exports = app;
