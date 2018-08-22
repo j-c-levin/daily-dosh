@@ -8,7 +8,7 @@ export const environment = {
   serverUrl: 'http://localhost:3000',
   monzoStorageKey: 'MonzoStorageKey',
   startDateStorageKey: 'StartDateKey',
-  redirectUri: 'http://localhost:4200/oauth/redirect'
+  redirectUri: 'http://localhost:4200/'
 };
 
 /*

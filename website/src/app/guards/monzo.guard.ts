@@ -24,6 +24,14 @@ export class MonzoGuard implements CanActivate {
       .getItem(environment.monzoStorageKey)
       .pipe(
         map(key => key !== null),
+        map(hasKey => {
+          const hasCode = Object.keys(next.queryParams).includes('code');
+          if (hasKey === false && hasCode === false) {
+            return hasKey;
+          } else {
+            this.router.navigateByUrl(`oauth/redirect?code=${next.queryParams.code}&state=${next.queryParams.state}`);
+          }
+        }),
         tap(result => {
           // Redirect to log in via monzo
           if (result === false) {
