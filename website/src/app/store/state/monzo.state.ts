@@ -5,7 +5,8 @@ import {
     UpdateIgnoredTransactions,
     SetStartDate,
     LoadParameters,
-    UpdateStartDate
+    UpdateStartDate,
+    SetAccessKey
 } from '../actions/index';
 import { MonzoService } from '../../services/monzo.service';
 import { tap, map, switchMap } from 'rxjs/operators';
@@ -22,6 +23,7 @@ export interface Transaction {
 }
 
 export class MonzoStateModel {
+    accessKey: string;
     transactions: Transaction[];
     ignoredTransactions: string[];
     dailyBudget: number;
@@ -31,6 +33,7 @@ export class MonzoStateModel {
 @State<MonzoStateModel>({
     name: 'Monzo',
     defaults: {
+        accessKey: '',
         transactions: [],
         ignoredTransactions: [],
         dailyBudget: 52,
@@ -63,8 +66,17 @@ export class MonzoState {
         return state.startDay;
     }
 
+    @Action(SetAccessKey)
+    SetAccessKey(ctx: StateContext<MonzoStateModel>, { key }: SetAccessKey) {
+        const state = ctx.getState();
+        ctx.setState({
+            ...state,
+            accessKey: key
+        });
+    }
+
     @Action(LoadParameters)
-    LoadParameters(ctx: StateContext<MonzoStateModel>): Observable<void> {
+    loadParameters(ctx: StateContext<MonzoStateModel>): Observable<void> {
         return of(null)
             .pipe(
                 switchMap(() => ctx.dispatch(new UpdateTransactions())),

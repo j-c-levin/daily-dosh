@@ -2,6 +2,11 @@ export class LoadParameters {
     static readonly type = '[Monzo] Load Parameters';
 }
 
+export class SetAccessKey {
+    static readonly type = '[Monzo] Set Access Key';
+    constructor(public key: string) { }
+}
+
 export class UpdateTransactions {
     static readonly type = '[Monzo] Update Transactions';
 }

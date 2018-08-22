@@ -34,7 +34,6 @@ app.post('/auth', async (req, res) => {
                 code: req.body.code,
             });
         const storageKey = v4();
-        res.send({ access_token: response.body.access_token, storage_key: storageKey });
         const params = {
             Bucket: s3BucketName,
             Key: storageKey,
@@ -43,6 +42,9 @@ app.post('/auth', async (req, res) => {
         s3.putObject(params, (err) => {
             if (err) {
                 console.error('Error saving details', err);
+                res.status(500).send('Error saving details');
+            } else {
+                res.send({ access_token: response.body.access_token, storage_key: storageKey });
             }
         });
     } catch (e) {
@@ -55,24 +57,40 @@ app.get('/auth', async (req, res) => {
     try {
         const params = {
             Bucket: s3BucketName,
-            Key: req.params.storage_key,
+            Key: req.query.storage_key,
         };
         refreshToken = await s3.getObject(params).promise();
     } catch (e) {
         console.error('Error retrieving refresh token from s3', e);
-        res.sendStatus(500).send('Error retrieving refresh token from s3');
+        res.status(500).send('Error retrieving refresh token from s3');
+    }
+    if (typeof refreshToken === 'undefined' || typeof refreshToken.Body === 'undefined') {
+        throw new Error('something is undefined' + refreshToken);
     }
     try {
         const monzoAuthUrl = 'https://api.monzo.com/oauth2/token';
+        const refreshParams = {
+            grant_type: 'refresh_token',
+            client_id: process.env.MONZO_CLIENT_ID,
+            client_secret: process.env.CLIENT_SECRET,
+            refresh_token: refreshToken.Body.toString(),
+        };
         const response = await post(monzoAuthUrl)
             .type('form')
-            .send({
-                grant_type: 'refresh_token',
-                client_id: process.env.MONZO_CLIENT_ID,
-                client_secret: process.env.CLIENT_SECRET,
-                refresh_token: refreshToken,
-            });
-        res.send({ access_token: response.body.access_token });
+            .send(refreshParams);
+        const storageParams = {
+            Bucket: s3BucketName,
+            Key: req.query.storage_key,
+            Body: response.body.refresh_token,
+        };
+        s3.putObject(storageParams, (err) => {
+            if (err) {
+                console.error('Error saving details', err);
+                res.status(500).send('Error saving details');
+            } else {
+                res.send({ access_token: response.body.access_token });
+            }
+        });
     } catch (e) {
         res.status(500).send('Error refreshing access: ' + e);
     }

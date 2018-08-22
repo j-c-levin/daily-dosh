@@ -2,8 +2,10 @@ import { Component, OnInit } from '@angular/core';
 import { Http } from '@angular/http';
 import { environment } from 'src/environments/environment';
 import { ActivatedRoute, Router } from '@angular/router';
-import { switchMap, map, tap } from 'rxjs/operators';
+import { switchMap, map, tap, zip, combineAll, zipAll } from 'rxjs/operators';
 import { LocalStorage } from '@ngx-pwa/local-storage';
+import { Store } from '@ngxs/store';
+import { SetAccessKey } from '../../store/actions/index';
 
 @Component({
   selector: 'app-auth',
@@ -16,7 +18,8 @@ export class AuthComponent implements OnInit {
     private http: Http,
     private activatedRoute: ActivatedRoute,
     private localStorage: LocalStorage,
-    private router: Router
+    private router: Router,
+    private store: Store
   ) { }
 
   ngOnInit() {
@@ -28,7 +31,7 @@ export class AuthComponent implements OnInit {
           return this.http.post(url, body);
         }),
         map(res => res.json()),
-        switchMap(response => this.localStorage.setItem(environment.monzoStorageKey, response.access_token)),
+        switchMap((response) => this.localStorage.setItem(environment.monzoStorageKey, response.storage_key)),
         tap(() => this.router.navigate(['/']))
       )
       .subscribe();
