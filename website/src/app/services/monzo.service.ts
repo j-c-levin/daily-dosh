@@ -5,7 +5,7 @@ import { Observable, of, zip } from 'rxjs';
 import { LocalStorage } from '@ngx-pwa/local-storage';
 import { environment } from 'src/environments/environment';
 import { Http, RequestOptions, Headers } from '@angular/http';
-import { switchMap, map, tap, combineAll, catchError } from 'rxjs/operators';
+import { switchMap, map, tap, combineAll, catchError, filter } from 'rxjs/operators';
 import { Store } from '@ngxs/store';
 import { MonzoStateModel } from '../store/state/monzo.state';
 
@@ -24,6 +24,12 @@ export class MonzoService {
     return this.localStorage.getItem(environment.monzoStorageKey)
       .pipe(
         switchMap(storageKey => this.http.get(`${environment.serverUrl}/auth?storage_key=${storageKey}`)),
+        catchError((err) => {
+          console.error('error getting access token:' + err);
+          this.localStorage.removeItem(environment.monzoStorageKey)
+            .pipe(map(() => window.location.reload()));
+          return of(null);
+        }),
         map(res => res.json().access_token),
         switchMap((accessKey) => {
           return zip(of(accessKey), this.localStorage.getItem(environment.startDateStorageKey));

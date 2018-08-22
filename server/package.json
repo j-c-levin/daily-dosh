@@ -4,7 +4,11 @@
   "description": "a monzo connected webapp to help budget daily",
   "main": "server/index.js",
   "scripts": {
-    "start": "nodemon --exec ts-node index.ts"
+    "start": "nodemon --exec ts-node src/index.ts",
+    "claudia:setup": "npm-run-all compile claudia:express:setup",
+    "compile": "tsc",
+    "claudia:express:setup": "claudia generate-serverless-express-proxy --express-module dist/index",
+    "claudia:create": "claudia create --handler lambda.handler --deploy-proxy-api --region eu-west-1 --name daily-dosh --timeout 10"
   },
   "repository": "git+https://github.com/j-c-levin/daily-dosh.git",
   "keywords": [
@@ -21,7 +25,9 @@
   "dependencies": {
     "@angular/cli": "^6.1.2",
     "aws-sdk": "^2.298.0",
+    "aws-serverless-express": "^3.3.5",
     "body-parser": "^1.18.3",
+    "claudia": "^5.1.1",
     "dotenv": "^6.0.0",
     "express": "^4.16.3",
     "superagent": "^3.8.3",
@@ -34,6 +40,7 @@
     "@types/superagent": "^3.8.3",
     "@types/uuid": "^3.4.3",
     "nodemon": "^1.18.3",
+    "npm-run-all": "^4.1.3",
     "ts-node": "^7.0.0",
     "tslint": "^5.11.0",
     "typescript": "^3.0.1"
