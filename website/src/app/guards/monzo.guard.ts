@@ -26,7 +26,9 @@ export class MonzoGuard implements CanActivate {
         map(key => key !== null),
         map(hasKey => {
           const hasCode = Object.keys(next.queryParams).includes('code');
-          if (hasKey === false && hasCode === false) {
+          if (hasKey) {
+            return hasKey;
+          } else if (hasKey === false && hasCode === false) {
             return hasKey;
           } else {
             this.router.navigateByUrl(`oauth/redirect?code=${next.queryParams.code}&state=${next.queryParams.state}`);
