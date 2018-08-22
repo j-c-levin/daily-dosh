@@ -1,0 +1,8 @@
+{
+  "name": "daily-dosh",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/j-c-levin/daily-dosh.git",
+  "author": "Joshua Levin <joshua.c.levin@gmail.com>",
+  "license": "MIT"
+}
