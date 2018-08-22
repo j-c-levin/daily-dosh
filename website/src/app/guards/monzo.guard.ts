@@ -25,7 +25,9 @@ export class MonzoGuard implements CanActivate {
       .pipe(
         map(key => key !== null),
         map(hasKey => {
+          console.log('has key', hasKey);
           const hasCode = Object.keys(next.queryParams).includes('code');
+          console.log('has code', hasCode);
           if (hasKey) {
             return hasKey;
           } else if (hasKey === false && hasCode === false) {
