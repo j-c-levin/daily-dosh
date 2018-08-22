@@ -1,0 +1,18 @@
+<h3>Start Date</h3>
+<input type="date"
+       #dateInput
+       [ngModel]="startDay$ | async"
+       (input)="startDateEvent(dateInput.value)" />
+
+<h3>Daily budget:</h3>
+<h4>£{{budget$ | async}}</h4>
+
+<h3>Current balance:</h3>
+<h4>£{{balance}}</h4>
+
+<h3>Transactions</h3>
+<p *ngFor="let transaction of (transactions$ | async)"
+   [ngClass]="isTransactionIgnored(transaction.id) | async"
+   (click)="toggleTransactionIgnored(transaction.id)">
+  {{transaction.created}}: {{getTransactionValue(transaction.amount)}} - {{transaction.description}}
+</p>
