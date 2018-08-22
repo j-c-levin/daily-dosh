@@ -5,10 +5,12 @@
   "main": "server/index.js",
   "scripts": {
     "start": "nodemon --exec ts-node src/index.ts",
+    "update": "npm-run-all compile claudia:update",
     "claudia:setup": "npm-run-all compile claudia:express:setup",
     "compile": "tsc",
     "claudia:express:setup": "claudia generate-serverless-express-proxy --express-module dist/index",
-    "claudia:create": "claudia create --handler lambda.handler --deploy-proxy-api --region eu-west-1 --name daily-dosh --timeout 10"
+    "claudia:create": "claudia create --handler lambda.handler --deploy-proxy-api --region eu-west-1 --name daily-dosh --timeout 10",
+    "claudia:update": "claudia update"
   },
   "repository": "git+https://github.com/j-c-levin/daily-dosh.git",
   "keywords": [
