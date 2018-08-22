@@ -10,7 +10,7 @@ import { environment } from 'src/environments/environment';
 })
 export class MonzoGuard implements CanActivate {
 
-  redirectUri = 'http://localhost:4200/oauth/redirect';
+  redirectUri = environment.redirectUri;
   state = '96d2eb6a-c1ab-40db-878e-97af6e04ee8d';
   // tslint:disable-next-line:max-line-length
   authenticationUrl = `https://auth.monzo.com/?client_id=${environment.clientId}&redirect_uri=${this.redirectUri}&response_type=code&state=${this.state}`;
