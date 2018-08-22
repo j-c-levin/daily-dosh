@@ -39,7 +39,7 @@ export class MonzoGuard implements CanActivate {
         tap(result => {
           // Redirect to log in via monzo
           if (result === false) {
-            // window.location.href = this.authenticationUrl;
+            window.location.href = this.authenticationUrl;
           }
         })
       );
