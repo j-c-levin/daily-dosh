@@ -67,8 +67,8 @@ export class MainComponent implements OnInit {
     // Discard the time and time-zone information.
     const utc1 = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
     const utc2 = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
-
-    return Math.floor((utc2 - utc1) / _MS_PER_DAY);
+    // Add one is necessary to ensure that the current day's budget is added to the total (i.e. on the first day of the month, your budget is *1, not *0
+    return Math.floor((utc2 - utc1) / _MS_PER_DAY) + 1;
   }
 
   private moneySpent(transactions: Transaction[], ignoredTransactions: string[]): number {
