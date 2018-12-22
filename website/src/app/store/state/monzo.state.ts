@@ -36,7 +36,7 @@ export class MonzoStateModel {
         accessKey: '',
         transactions: [],
         ignoredTransactions: [],
-        dailyBudget: 42,
+        dailyBudget: 30,
         startDay: '2018-07-26'
     }
 })
