@@ -182,10 +182,10 @@
       <button class="link" on:click={disconnect}>Disconnect</button>
     </header>
 
-    <section class="hero" class:over={state.todayBalance < 0}>
-      <p class="hero-label">{state.todayBalance < 0 ? 'Over budget by' : 'You can spend today'}</p>
-      <p class="hero-value">{money(Math.abs(state.todayBalance))}</p>
-      <p class="muted">{money(state.dailyAllowance)} a day · {state.daysRemaining} days to next payday</p>
+    <section class="hero" class:over={state.safeToSpend < 0}>
+      <p class="hero-label">{state.safeToSpend < 0 ? 'Behind by' : 'Safe to spend'}</p>
+      <p class="hero-value">{money(Math.abs(state.safeToSpend))}</p>
+      <p class="muted">building up £{(state.dailyAllowance / 100).toFixed(2)} a day · {state.daysRemaining} days to next payday</p>
     </section>
 
     <section class="stats">

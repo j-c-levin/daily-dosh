@@ -209,8 +209,10 @@ function withBalance(state, currentBalance) {
     dailyAllowance,
     daysElapsed: elapsed,
     daysRemaining: Math.max(0, daysInPeriod - elapsed),
-    // Headline: how much you can spend today and stay on track.
-    todayBalance: allowedSoFar - spent,
+    // Headline: the cumulative allowance accrued since payday minus everything
+    // spent. Unspent days roll forward into a surplus; overspending shows as
+    // negative and is pulled back as each new day adds another day's allowance.
+    safeToSpend: allowedSoFar - spent,
   };
 }
 
