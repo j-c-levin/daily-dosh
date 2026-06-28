@@ -12,6 +12,19 @@ function isoDate(d) {
   return d.toISOString().slice(0, 10);
 }
 
+// This is a UK money app, so a "day" is a UK civil day: it rolls over at local
+// midnight, not at 00:00 UTC. During British Summer Time those differ by an
+// hour, so counting days in UTC leaves the app a day behind for the first hour
+// after local midnight. `localDate` resolves the calendar date in UK time
+// (DST-aware), and day arithmetic is done against that.
+const ZONE = 'Europe/London';
+
+/** yyyy-mm-dd for an instant, as the calendar date in the UK timezone. */
+function localDate(d = new Date()) {
+  // en-CA renders as YYYY-MM-DD; the timeZone applies the GMT/BST offset.
+  return new Intl.DateTimeFormat('en-CA', { timeZone: ZONE }).format(d);
+}
+
 /** UTC-midnight Date from a yyyy-mm-dd string or ISO timestamp. */
 function utcMidnight(value) {
   const d = new Date(value);
@@ -156,9 +169,14 @@ export function buildPeriod(paydayDate, disposablePot) {
   return { paydayDate: payday, nextPaydayDate, daysInPeriod, disposablePot };
 }
 
-/** Days elapsed since payday, inclusive of today (day 1 is payday itself). */
+/**
+ * Days elapsed since payday, inclusive of today (day 1 is payday itself).
+ * "Today" is the current UK civil day, so the count advances at UK local
+ * midnight rather than 00:00 UTC.
+ */
 export function daysElapsed(paydayDate, now = new Date()) {
-  const diff = Math.floor((utcMidnight(now) - utcMidnight(paydayDate)) / MS_PER_DAY) + 1;
+  const today = utcMidnight(localDate(now));
+  const diff = Math.floor((today - utcMidnight(paydayDate)) / MS_PER_DAY) + 1;
   return Math.max(1, diff);
 }
 

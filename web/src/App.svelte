@@ -116,7 +116,8 @@
 
   function openReset() {
     const p = state?.period;
-    const today = new Date().toISOString().slice(0, 10);
+    // UK civil date (matches the server's day boundary), not the UTC date.
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date());
     resetStart = p?.paydayDate || today;
     resetEnd = p?.nextPaydayDate || '';
     resetPot = p ? (p.disposablePot / 100).toFixed(2) : '';
