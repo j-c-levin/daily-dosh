@@ -54,6 +54,37 @@ export function detectPayday(transactions, employerName, dismissedIds = []) {
 }
 
 /**
+ * The exact instant the financial month begins on `paydayDate`: the timestamp
+ * of the payday credit itself. Money spent earlier the same day came out of
+ * last month's budget and must not count against the new month, so the period
+ * starts when pay actually lands - not at midnight.
+ *
+ * We look for the employer's inbound credit on that date (largest wins if there
+ * are several), then fall back to the largest inbound credit of the day, then -
+ * if no credit is visible for that day - to the start of the day in UTC.
+ */
+export function paydayInstant(transactions, employerName, paydayDate, dismissedIds = []) {
+  const dismissed = new Set(dismissedIds);
+  const needle = employerName?.trim().toLowerCase();
+
+  const creditsToday = transactions
+    .filter((t) => t.amount > 0 && !t.merchant && !dismissed.has(t.id))
+    .filter((t) => t.created.slice(0, 10) === paydayDate);
+
+  const matched = needle
+    ? creditsToday.filter((t) =>
+        [t.counterparty?.name, t.description].some(
+          (h) => h && h.toLowerCase().includes(needle)
+        )
+      )
+    : [];
+
+  const pool = matched.length ? matched : creditsToday;
+  if (pool.length === 0) return `${paydayDate}T00:00:00.000Z`;
+  return pool.sort((a, b) => b.amount - a.amount)[0].created;
+}
+
+/**
  * Recent inbound bank transfers, newest first - used to help the user pick an
  * employer. Card refunds (which carry a `merchant`) are excluded so the
  * suggestions are the senders that could plausibly be payroll.

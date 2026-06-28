@@ -10,6 +10,7 @@ import {
 } from './src/monzo.mjs';
 import {
   detectPayday,
+  paydayInstant,
   recentCredits,
   buildPeriod,
   periodFromDates,
@@ -177,8 +178,12 @@ function buildReadyState(user, transactions) {
   const { paydayDate, nextPaydayDate, daysInPeriod, disposablePot } = user.period;
   const ignored = new Set(user.ignoredTransactionIds ?? []);
 
+  // Start the month at the moment pay actually landed, not midnight - anything
+  // spent earlier that day belonged to last month. Strictly-after also drops
+  // the payday credit itself out of the spending list.
+  const cutoff = paydayInstant(transactions, user.employerName, paydayDate, user.dismissedPaydayIds);
   const periodTx = transactions
-    .filter((t) => t.created.slice(0, 10) >= paydayDate)
+    .filter((t) => new Date(t.created) > new Date(cutoff))
     .sort((a, b) => new Date(b.created) - new Date(a.created));
 
   return {
