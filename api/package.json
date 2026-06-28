@@ -1,0 +1,12 @@
+{
+  "name": "daily-dosh-api",
+  "version": "2.0.0",
+  "description": "Daily Dosh backend - Monzo OAuth + financial-month budgeting",
+  "type": "module",
+  "main": "index.mjs",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.600.0",
+    "@aws-sdk/lib-dynamodb": "^3.600.0"
+  }
+}
