@@ -58,8 +58,32 @@ export function getBalance(token, accountId) {
   return call('GET', '/balance', { token, query: { account_id: accountId } });
 }
 
-export function getTransactions(token, accountId, sinceIso) {
-  const query = { account_id: accountId, 'expand[]': 'merchant' };
-  if (sinceIso) query.since = sinceIso;
+const TX_PAGE_LIMIT = 100; // Monzo's max page size (the unset default is only 30)
+const TX_MAX_PAGES = 50; // safety cap: 5,000 transactions is far more than a financial month
+
+function getTransactionsPage(token, accountId, since) {
+  const query = { account_id: accountId, 'expand[]': 'merchant', limit: String(TX_PAGE_LIMIT) };
+  if (since) query.since = since;
   return call('GET', '/transactions', { token, query });
+}
+
+/**
+ * Fetch *every* transaction since `sinceIso`, following Monzo's cursor
+ * pagination. Monzo returns transactions oldest-first from the `since` point
+ * and caps each response at `limit` (default 30, max 100), so a single request
+ * silently strands the most recent transactions - the salary credit we look for
+ * and the current month's spending both fall off the end. We page forward,
+ * using the last transaction's id as the next `since` cursor, until a short
+ * page tells us we've caught up to the present.
+ */
+export async function getTransactions(token, accountId, sinceIso) {
+  const transactions = [];
+  let since = sinceIso;
+  for (let page = 0; page < TX_MAX_PAGES; page++) {
+    const { transactions: batch = [] } = await getTransactionsPage(token, accountId, since);
+    transactions.push(...batch);
+    if (batch.length < TX_PAGE_LIMIT) break; // short page => no more to fetch
+    since = batch[batch.length - 1].id; // advance the cursor past the last tx
+  }
+  return { transactions };
 }
