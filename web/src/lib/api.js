@@ -18,6 +18,7 @@ export const api = {
   auth: (code, redirectUri) =>
     req('/api/auth', { method: 'POST', body: JSON.stringify({ code, redirectUri }) }),
   state: (key) => req(`/api/state?${q(key)}`),
+  day: (key, date) => req(`/api/day?${q(key)}&date=${encodeURIComponent(date)}`),
   confirmBuckets: (key) => req(`/api/confirm-buckets?${q(key)}`, { method: 'POST' }),
   dismissPayday: (key, transactionId) =>
     req(`/api/dismiss-payday?${q(key)}`, { method: 'POST', body: JSON.stringify({ transactionId }) }),

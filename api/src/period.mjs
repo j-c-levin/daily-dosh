@@ -85,6 +85,26 @@ export function paydayInstant(transactions, employerName, paydayDate, dismissedI
 }
 
 /**
+ * The instant the financial month starts, used to filter this month's spending.
+ * In priority order:
+ *  1. the transaction the user explicitly marked as their payday - resolved from
+ *     live data by id, so the credit itself drops out and any same-day pre-pay
+ *     spending is excluded;
+ *  2. the timestamp captured when they marked it, if that transaction has since
+ *     aged out of the fetched window;
+ *  3. a best-effort guess at the payday credit on the payday date (and, failing
+ *     that, the start of the payday day - handled inside paydayInstant).
+ */
+export function periodCutoff(period, transactions, user) {
+  if (period.paydayTransactionId) {
+    const tx = transactions.find((t) => t.id === period.paydayTransactionId);
+    if (tx) return tx.created;
+  }
+  if (period.paydayAt) return period.paydayAt;
+  return paydayInstant(transactions, user.employerName, period.paydayDate, user.dismissedPaydayIds);
+}
+
+/**
  * Recent inbound bank transfers, newest first - used to help the user pick an
  * employer. Card refunds (which carry a `merchant`) are excluded so the
  * suggestions are the senders that could plausibly be payroll.

@@ -1,7 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { api } from './lib/api.js';
-  import { money } from './lib/format.js';
+  import { money, shortTime } from './lib/format.js';
   import TransactionRow from './lib/TransactionRow.svelte';
 
   const KEY = 'dd_storage_key';
@@ -20,6 +20,11 @@
   let resetStart = '';
   let resetEnd = '';
   let resetPot = '';
+  // "Pick your payday" selector: the transactions on the chosen start date.
+  let resetDay = [];
+  let resetPaydayId = null;
+  let loadingDay = false;
+  let dayError = '';
 
   onMount(async () => {
     if (location.pathname === REDIRECT_PATH) {
@@ -115,15 +120,44 @@
     resetStart = p?.paydayDate || today;
     resetEnd = p?.nextPaydayDate || '';
     resetPot = p ? (p.disposablePot / 100).toFixed(2) : '';
+    resetPaydayId = p?.paydayTransactionId || null;
+    resetDay = [];
+    dayError = '';
     showReset = true;
+    loadDay();
+  }
+
+  // Fetch the chosen start date's transactions so the user can tap their payday.
+  async function loadDay() {
+    if (!resetStart) return;
+    loadingDay = true;
+    dayError = '';
+    try {
+      const { transactions } = await api.day(storageKey, resetStart);
+      resetDay = transactions;
+    } catch (e) {
+      dayError = e.message;
+      resetDay = [];
+    } finally {
+      loadingDay = false;
+    }
+  }
+
+  // A different start date means a different day of transactions to pick from.
+  function onStartChange() {
+    resetPaydayId = null;
+    loadDay();
   }
 
   async function saveReset() {
+    const payday = resetDay.find((t) => t.id === resetPaydayId);
     await action(() =>
       api.reset(storageKey, {
         startDate: resetStart,
         endDate: resetEnd,
         potAmount: Number(resetPot),
+        paydayTransactionId: payday?.id ?? null,
+        paydayAt: payday?.created ?? null,
       })
     );
     showReset = false;
@@ -164,8 +198,39 @@
         you want to tweak the numbers.</p>
       <label class="field">
         <span class="muted small">Start date (payday)</span>
-        <input type="date" bind:value={resetStart} />
+        <input type="date" bind:value={resetStart} on:change={onStartChange} />
       </label>
+
+      {#if resetStart}
+        <div class="field">
+          <span class="muted small">Which transaction is your payday? Tap it.</span>
+          {#if loadingDay}
+            <p class="muted small">Loading that day…</p>
+          {:else if dayError}
+            <p class="bad small">{dayError}</p>
+          {:else if resetDay.length}
+            <div class="picker">
+              {#each resetDay as t (t.id)}
+                <button type="button" class="pick" class:selected={t.id === resetPaydayId}
+                  on:click={() => (resetPaydayId = t.id)}>
+                  <span class="pick-icon">
+                    {#if t.logo}<img src={t.logo} alt="" />{:else}<span>{t.emoji || '💳'}</span>{/if}
+                  </span>
+                  <span class="pick-meta">
+                    <span class="pick-name">{t.description}</span>
+                    <span class="muted small">{shortTime(t.created)}</span>
+                  </span>
+                  <span class="pick-amt" class:credit={t.amount > 0}>{money(t.amount, { sign: true })}</span>
+                </button>
+              {/each}
+            </div>
+            <span class="muted small">Spending before your payday lands won't count this month. Optional — leave unset to use the start of the day.</span>
+          {:else}
+            <p class="muted small">No transactions on this day.</p>
+          {/if}
+        </div>
+      {/if}
+
       <label class="field">
         <span class="muted small">Spending pot (£)</span>
         <input type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"
@@ -378,5 +443,65 @@
     color: var(--text);
     font: inherit;
     color-scheme: dark;
+  }
+  .picker {
+    max-height: 260px;
+    overflow-y: auto;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface-2);
+  }
+  .pick {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--line);
+    padding: 10px 12px;
+    text-align: left;
+    color: var(--text);
+    font: inherit;
+  }
+  .pick:last-child {
+    border-bottom: none;
+  }
+  .pick.selected {
+    background: color-mix(in srgb, var(--good) 18%, transparent);
+    box-shadow: inset 3px 0 0 var(--good);
+  }
+  .pick-icon {
+    flex: 0 0 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--surface);
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+  }
+  .pick-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .pick-meta {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .pick-name {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pick-amt {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+  .pick-amt.credit {
+    color: var(--good);
   }
 </style>

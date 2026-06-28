@@ -10,7 +10,7 @@ import {
 } from './src/monzo.mjs';
 import {
   detectPayday,
-  paydayInstant,
+  periodCutoff,
   recentCredits,
   buildPeriod,
   periodFromDates,
@@ -178,17 +178,21 @@ function buildReadyState(user, transactions) {
   const { paydayDate, nextPaydayDate, daysInPeriod, disposablePot } = user.period;
   const ignored = new Set(user.ignoredTransactionIds ?? []);
 
-  // Start the month at the moment pay actually landed, not midnight - anything
-  // spent earlier that day belonged to last month. Strictly-after also drops
-  // the payday credit itself out of the spending list.
-  const cutoff = paydayInstant(transactions, user.employerName, paydayDate, user.dismissedPaydayIds);
+  const cutoff = periodCutoff(user.period, transactions, user);
   const periodTx = transactions
     .filter((t) => new Date(t.created) > new Date(cutoff))
     .sort((a, b) => new Date(b.created) - new Date(a.created));
 
   return {
     status: 'ready',
-    period: { paydayDate, nextPaydayDate, daysInPeriod, disposablePot },
+    period: {
+      paydayDate,
+      nextPaydayDate,
+      daysInPeriod,
+      disposablePot,
+      paydayTransactionId: user.period.paydayTransactionId ?? null,
+      paydayAt: user.period.paydayAt ?? null,
+    },
     employerName: user.employerName,
     transactions: periodTx.map((t) => mapTransaction(t, ignored)),
     // `currentBalance` and the derived numbers are filled in by the caller,
@@ -249,7 +253,7 @@ async function handleConfirmBuckets(user) {
 }
 
 async function handleReset(event, user) {
-  const { startDate, endDate, potAmount } = parseBody(event);
+  const { startDate, endDate, potAmount, paydayTransactionId, paydayAt } = parseBody(event);
   if (!startDate || !endDate || potAmount == null) {
     return json(400, { error: 'startDate, endDate and potAmount are required' });
   }
@@ -258,9 +262,32 @@ async function handleReset(event, user) {
   if (new Date(endDate) <= new Date(startDate)) {
     return json(400, { error: 'end date must be after start date' });
   }
-  user.period = periodFromDates(startDate, endDate, pot);
+  // The user can mark the exact transaction that is their payday; we anchor the
+  // financial month to its timestamp so same-day pre-pay spending is excluded.
+  user.period = {
+    ...periodFromDates(startDate, endDate, pot),
+    paydayTransactionId: paydayTransactionId || null,
+    paydayAt: paydayAt || null,
+  };
   await saveUser(user);
   return handleStateWithBalance(user);
+}
+
+/** A single day's transactions, for the "pick your payday" selector. */
+async function handleDay(event, user) {
+  user = await ensureAccessToken(user);
+  user = await ensureAccount(user);
+  const date = (event.queryStringParameters ?? {}).date;
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return json(400, { error: 'date (YYYY-MM-DD) required' });
+  }
+  const ignored = new Set(user.ignoredTransactionIds ?? []);
+  const all = await getTransactions(user.accessToken, user.accountId, `${date}T00:00:00.000Z`);
+  const dayTx = (all.transactions ?? [])
+    .filter((t) => t.created.slice(0, 10) === date)
+    .sort((a, b) => new Date(a.created) - new Date(b.created)) // chronological
+    .map((t) => mapTransaction(t, ignored));
+  return json(200, { date, transactions: dayTx });
 }
 
 async function handleDismissPayday(event, user) {
@@ -307,6 +334,7 @@ export async function handler(event) {
     // Everything past here needs a storage key.
     const routesNeedingUser = [
       '/api/state',
+      '/api/day',
       '/api/confirm-buckets',
       '/api/dismiss-payday',
       '/api/reset',
@@ -321,6 +349,7 @@ export async function handler(event) {
 
       try {
         if (path === '/api/state') return await handleStateWithBalance(user);
+        if (path === '/api/day') return await handleDay(event, user);
         if (path === '/api/confirm-buckets' && method === 'POST') return await handleConfirmBuckets(user);
         if (path === '/api/dismiss-payday' && method === 'POST') return await handleDismissPayday(event, user);
         if (path === '/api/reset' && method === 'POST') return await handleReset(event, user);
