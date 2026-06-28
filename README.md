@@ -14,8 +14,13 @@ you can spend today = days since payday × (disposable pot ÷ days in month) −
 
 ## How it works
 
-- **Payday detection** — finds the salary credit from your employer (matched by
-  name) and uses its date as the start of the financial month.
+- **Payday detection** — finds the salary credit from your employer and uses
+  its date as the start of the financial month. To avoid confusing pay with
+  other money from the same employer, a payday must be an inbound bank transfer
+  (not a card refund), over £5,000, dated the 20th–25th. When one is found you
+  confirm it's really pay (and that you've swept money into pots) before it
+  counts; you can also dismiss a false match. Thresholds live in
+  `api/src/period.mjs`.
 - **Disposable pot** — when a new payday is detected, the app asks you to
   confirm you've swept money into your pots, then snapshots your main-account
   balance (Monzo's `balance` excludes pot money). That snapshot is the month's

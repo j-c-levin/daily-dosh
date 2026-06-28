@@ -19,6 +19,8 @@ export const api = {
     req('/api/auth', { method: 'POST', body: JSON.stringify({ code, redirectUri }) }),
   state: (key) => req(`/api/state?${q(key)}`),
   confirmBuckets: (key) => req(`/api/confirm-buckets?${q(key)}`, { method: 'POST' }),
+  dismissPayday: (key, transactionId) =>
+    req(`/api/dismiss-payday?${q(key)}`, { method: 'POST', body: JSON.stringify({ transactionId }) }),
   setEmployer: (key, employerName) =>
     req(`/api/settings?${q(key)}`, { method: 'POST', body: JSON.stringify({ employerName }) }),
   toggleIgnore: (key, transactionId) =>

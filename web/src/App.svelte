@@ -100,6 +100,7 @@
   const saveEmployer = () =>
     employerInput.trim() && action(() => api.setEmployer(storageKey, employerInput.trim()));
   const confirmBuckets = () => action(() => api.confirmBuckets(storageKey));
+  const dismissPayday = () => action(() => api.dismissPayday(storageKey, state.payday.id));
   const toggleIgnore = (id) => action(() => api.toggleIgnore(storageKey, id));
 
   function disconnect() {
@@ -166,12 +167,13 @@
 
   {:else if state?.status === 'new_month'}
     <div class="card">
-      <h2>New pay's in 🎉</h2>
-      <p class="muted">{money(state.payday.amount)} landed on
+      <h2>Is this your pay? 🤔</h2>
+      <p class="muted">{money(state.payday.amount)} from {state.employerName || 'your employer'} landed on
         {new Date(state.payday.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}.</p>
-      <p>Move everything into your pots, then confirm — whatever's left becomes this month's
-        spending money.</p>
-      <button class="btn" disabled={busy} on:click={confirmBuckets}>I've sorted my pots</button>
+      <p>If it's your pay, move everything into your pots first — whatever's left becomes this
+        month's spending money.</p>
+      <button class="btn" disabled={busy} on:click={confirmBuckets}>Yes — I've sorted my pots</button>
+      <button class="btn secondary" disabled={busy} on:click={dismissPayday}>No, that's not my pay</button>
     </div>
 
   {:else if state?.status === 'ready'}
@@ -301,5 +303,8 @@
   }
   h2 {
     margin: 0 0 6px;
+  }
+  .card .btn {
+    margin-top: 10px;
   }
 </style>

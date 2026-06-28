@@ -149,17 +149,18 @@ async function handleState(user) {
     return json(200, { status: 'needs_employer', recentCredits: recentCredits(transactions) });
   }
 
-  const payday = detectPayday(transactions, user.employerName);
+  const payday = detectPayday(transactions, user.employerName, user.dismissedPaydayIds);
   const storedPayday = user.period?.paydayDate;
   const detectedDate = payday ? payday.created.slice(0, 10) : null;
 
   // A new financial month has landed if we see an employer credit newer than
-  // the period we last snapshotted. We wait for the user to confirm they've
-  // swept money into their pots before snapshotting the disposable balance.
+  // the period we last snapshotted. We ask the user to confirm it's really pay
+  // (and that they've swept money into pots) before snapshotting the balance.
   if (detectedDate && detectedDate !== storedPayday) {
     return json(200, {
       status: 'new_month',
-      payday: { date: detectedDate, amount: payday.amount },
+      employerName: user.employerName,
+      payday: { id: payday.id, date: detectedDate, amount: payday.amount },
     });
   }
 
@@ -227,7 +228,7 @@ async function handleConfirmBuckets(user) {
 
   const all = await getTransactions(user.accessToken, user.accountId, lookbackIso());
   const transactions = all.transactions ?? [];
-  const payday = detectPayday(transactions, user.employerName);
+  const payday = detectPayday(transactions, user.employerName, user.dismissedPaydayIds);
   if (!payday) return json(400, { error: 'no payday transaction found to confirm' });
 
   // Snapshot the main-account balance *now* - after the user has moved money
@@ -236,6 +237,16 @@ async function handleConfirmBuckets(user) {
   user.period = buildPeriod(payday.created.slice(0, 10), balance.balance);
   await saveUser(user);
 
+  return handleStateWithBalance(user);
+}
+
+async function handleDismissPayday(event, user) {
+  const { transactionId } = parseBody(event);
+  if (!transactionId) return json(400, { error: 'transactionId required' });
+  const set = new Set(user.dismissedPaydayIds ?? []);
+  set.add(transactionId);
+  user.dismissedPaydayIds = [...set];
+  await saveUser(user);
   return handleStateWithBalance(user);
 }
 
@@ -271,7 +282,13 @@ export async function handler(event) {
     if (path === '/api/auth' && method === 'POST') return await handleAuth(event);
 
     // Everything past here needs a storage key.
-    const routesNeedingUser = ['/api/state', '/api/confirm-buckets', '/api/settings', '/api/ignore'];
+    const routesNeedingUser = [
+      '/api/state',
+      '/api/confirm-buckets',
+      '/api/dismiss-payday',
+      '/api/settings',
+      '/api/ignore',
+    ];
     if (routesNeedingUser.includes(path)) {
       const storageKey = query.storage_key;
       if (!storageKey) return json(400, { error: 'storage_key required' });
@@ -281,6 +298,7 @@ export async function handler(event) {
       try {
         if (path === '/api/state') return await handleStateWithBalance(user);
         if (path === '/api/confirm-buckets' && method === 'POST') return await handleConfirmBuckets(user);
+        if (path === '/api/dismiss-payday' && method === 'POST') return await handleDismissPayday(event, user);
         if (path === '/api/settings' && method === 'POST') return await handleSettings(event, user);
         if (path === '/api/ignore' && method === 'POST') return await handleIgnore(event, user);
       } catch (e) {

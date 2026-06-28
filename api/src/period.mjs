@@ -1,5 +1,12 @@
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
+// What counts as a payday credit (vs. an expense reimbursement from the same
+// employer). Salary is large and lands around the 25th; expenses are smaller
+// and can arrive any time. These guard against treating a reimbursement as pay.
+const PAYDAY_MIN_AMOUNT = 500000; // £5,000 in pence
+const PAYDAY_DAY_MIN = 20;
+const PAYDAY_DAY_MAX = 25;
+
 /** yyyy-mm-dd for a Date, in UTC. */
 function isoDate(d) {
   return d.toISOString().slice(0, 10);
@@ -14,17 +21,29 @@ function utcMidnight(value) {
 /**
  * Find the most recent salary credit matching the employer name.
  *
- * Salary arrives as an inbound bank transfer (amount > 0, a `counterparty`,
- * and no `merchant`). We deliberately ignore card transactions: if your
- * employer is also a merchant you buy from - e.g. Deliveroo - an incoming
- * refund on a food order would otherwise be mistaken for payday.
+ * A payday credit must be all of:
+ *  - an inbound bank transfer (amount > 0, a `counterparty`, no `merchant`) -
+ *    so a card refund from a same-named merchant (e.g. a Deliveroo food order)
+ *    can't be mistaken for pay;
+ *  - over £5,000 and dated the 20th-25th - so an expense reimbursement from the
+ *    same employer, which is smaller and can arrive any time, is left alone;
+ *  - not previously dismissed by the user as "not my pay".
+ *
+ * Even when one matches, the UI still asks the user to confirm before it's
+ * treated as the start of a new financial month.
  */
-export function detectPayday(transactions, employerName) {
+export function detectPayday(transactions, employerName, dismissedIds = []) {
   if (!employerName) return null;
   const needle = employerName.trim().toLowerCase();
+  const dismissed = new Set(dismissedIds);
 
   const matches = transactions
-    .filter((t) => t.amount > 0 && !t.merchant)
+    .filter((t) => t.amount > PAYDAY_MIN_AMOUNT && !t.merchant)
+    .filter((t) => !dismissed.has(t.id))
+    .filter((t) => {
+      const day = new Date(t.created).getUTCDate();
+      return day >= PAYDAY_DAY_MIN && day <= PAYDAY_DAY_MAX;
+    })
     .filter((t) => {
       const haystacks = [t.counterparty?.name, t.description];
       return haystacks.some((h) => h && h.toLowerCase().includes(needle));
