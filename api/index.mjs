@@ -12,6 +12,7 @@ import {
   detectPayday,
   recentCredits,
   buildPeriod,
+  periodFromDates,
   daysElapsed,
 } from './src/period.mjs';
 
@@ -242,6 +243,21 @@ async function handleConfirmBuckets(user) {
   return handleStateWithBalance(user);
 }
 
+async function handleReset(event, user) {
+  const { startDate, endDate, potAmount } = parseBody(event);
+  if (!startDate || !endDate || potAmount == null) {
+    return json(400, { error: 'startDate, endDate and potAmount are required' });
+  }
+  const pot = Math.round(Number(potAmount) * 100); // pounds -> pence
+  if (!Number.isFinite(pot) || pot < 0) return json(400, { error: 'invalid potAmount' });
+  if (new Date(endDate) <= new Date(startDate)) {
+    return json(400, { error: 'end date must be after start date' });
+  }
+  user.period = periodFromDates(startDate, endDate, pot);
+  await saveUser(user);
+  return handleStateWithBalance(user);
+}
+
 async function handleDismissPayday(event, user) {
   const { transactionId } = parseBody(event);
   if (!transactionId) return json(400, { error: 'transactionId required' });
@@ -288,6 +304,7 @@ export async function handler(event) {
       '/api/state',
       '/api/confirm-buckets',
       '/api/dismiss-payday',
+      '/api/reset',
       '/api/settings',
       '/api/ignore',
     ];
@@ -301,6 +318,7 @@ export async function handler(event) {
         if (path === '/api/state') return await handleStateWithBalance(user);
         if (path === '/api/confirm-buckets' && method === 'POST') return await handleConfirmBuckets(user);
         if (path === '/api/dismiss-payday' && method === 'POST') return await handleDismissPayday(event, user);
+        if (path === '/api/reset' && method === 'POST') return await handleReset(event, user);
         if (path === '/api/settings' && method === 'POST') return await handleSettings(event, user);
         if (path === '/api/ignore' && method === 'POST') return await handleIgnore(event, user);
       } catch (e) {

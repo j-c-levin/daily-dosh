@@ -15,6 +15,12 @@
   let busy = false;
   let poll;
 
+  // Manual override ("Adjust") form.
+  let showReset = false;
+  let resetStart = '';
+  let resetEnd = '';
+  let resetPot = '';
+
   onMount(async () => {
     if (location.pathname === REDIRECT_PATH) {
       await handleCallback();
@@ -103,6 +109,26 @@
   const dismissPayday = () => action(() => api.dismissPayday(storageKey, state.payday.id));
   const toggleIgnore = (id) => action(() => api.toggleIgnore(storageKey, id));
 
+  function openReset() {
+    const p = state?.period;
+    const today = new Date().toISOString().slice(0, 10);
+    resetStart = p?.paydayDate || today;
+    resetEnd = p?.nextPaydayDate || '';
+    resetPot = p ? (p.disposablePot / 100).toFixed(2) : '';
+    showReset = true;
+  }
+
+  async function saveReset() {
+    await action(() =>
+      api.reset(storageKey, {
+        startDate: resetStart,
+        endDate: resetEnd,
+        potAmount: Number(resetPot),
+      })
+    );
+    showReset = false;
+  }
+
   function disconnect() {
     localStorage.removeItem(KEY);
     storageKey = null;
@@ -129,6 +155,29 @@
     <div class="center">
       <p class="bad">{error}</p>
       <button class="btn secondary" on:click={() => location.assign('/')}>Try again</button>
+    </div>
+
+  {:else if showReset}
+    <div class="card">
+      <h2>Set budget manually</h2>
+      <p class="muted">Override the current financial month — handy if a payday was missed or
+        you want to tweak the numbers.</p>
+      <label class="field">
+        <span class="muted small">Start date (payday)</span>
+        <input type="date" bind:value={resetStart} />
+      </label>
+      <label class="field">
+        <span class="muted small">Spending pot (£)</span>
+        <input type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"
+          bind:value={resetPot} />
+      </label>
+      <label class="field">
+        <span class="muted small">End date (next payday)</span>
+        <input type="date" bind:value={resetEnd} />
+      </label>
+      <button class="btn" disabled={busy || !resetStart || !resetEnd || resetPot === ''}
+        on:click={saveReset}>Save budget</button>
+      <button class="btn secondary" disabled={busy} on:click={() => (showReset = false)}>Cancel</button>
     </div>
 
   {:else if state?.status === 'awaiting_approval'}
@@ -163,6 +212,7 @@
       <p class="muted">We haven't seen a payment from <b>{state.employerName || 'your employer'}</b>
         in the last 40 days. It'll show up here once it lands.</p>
       <button class="btn secondary" on:click={refresh}>Refresh</button>
+      <button class="link" on:click={openReset}>Set budget manually</button>
     </div>
 
   {:else if state?.status === 'new_month'}
@@ -179,7 +229,10 @@
   {:else if state?.status === 'ready'}
     <header class="top">
       <span class="brand small">Daily Dosh</span>
-      <button class="link" on:click={disconnect}>Disconnect</button>
+      <span class="actions">
+        <button class="link" on:click={openReset}>Adjust</button>
+        <button class="link" on:click={disconnect}>Disconnect</button>
+      </span>
     </header>
 
     <section class="hero" class:over={state.safeToSpend < 0}>
@@ -306,5 +359,24 @@
   }
   .card .btn {
     margin-top: 10px;
+  }
+  .actions {
+    display: flex;
+    gap: 16px;
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 14px 0;
+  }
+  .field input {
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--text);
+    font: inherit;
+    color-scheme: dark;
   }
 </style>

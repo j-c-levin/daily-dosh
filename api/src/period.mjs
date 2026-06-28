@@ -84,6 +84,17 @@ export function estimateNextPayday(paydayDate) {
   return isoDate(next);
 }
 
+/** Build a financial-month descriptor from explicit start/end dates (manual override). */
+export function periodFromDates(startDate, endDate, disposablePot) {
+  const paydayDate = isoDate(utcMidnight(startDate));
+  const nextPaydayDate = isoDate(utcMidnight(endDate));
+  const daysInPeriod = Math.max(
+    1,
+    Math.round((utcMidnight(nextPaydayDate) - utcMidnight(paydayDate)) / MS_PER_DAY)
+  );
+  return { paydayDate, nextPaydayDate, daysInPeriod, disposablePot };
+}
+
 /** Build the financial-month descriptor from a detected payday date. */
 export function buildPeriod(paydayDate, disposablePot) {
   const payday = isoDate(utcMidnight(paydayDate));
