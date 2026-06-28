@@ -13,17 +13,20 @@ function utcMidnight(value) {
 
 /**
  * Find the most recent salary credit matching the employer name.
- * Monzo represents inbound transfers with amount > 0 and the sender on
- * either `counterparty.name` or the transaction `description`.
+ *
+ * Salary arrives as an inbound bank transfer (amount > 0, a `counterparty`,
+ * and no `merchant`). We deliberately ignore card transactions: if your
+ * employer is also a merchant you buy from - e.g. Deliveroo - an incoming
+ * refund on a food order would otherwise be mistaken for payday.
  */
 export function detectPayday(transactions, employerName) {
   if (!employerName) return null;
   const needle = employerName.trim().toLowerCase();
 
   const matches = transactions
-    .filter((t) => t.amount > 0)
+    .filter((t) => t.amount > 0 && !t.merchant)
     .filter((t) => {
-      const haystacks = [t.counterparty?.name, t.description, t.merchant?.name];
+      const haystacks = [t.counterparty?.name, t.description];
       return haystacks.some((h) => h && h.toLowerCase().includes(needle));
     })
     .sort((a, b) => new Date(b.created) - new Date(a.created));
@@ -31,10 +34,14 @@ export function detectPayday(transactions, employerName) {
   return matches[0] ?? null;
 }
 
-/** Recent inbound credits, newest first - used to help the user pick an employer. */
+/**
+ * Recent inbound bank transfers, newest first - used to help the user pick an
+ * employer. Card refunds (which carry a `merchant`) are excluded so the
+ * suggestions are the senders that could plausibly be payroll.
+ */
 export function recentCredits(transactions) {
   return transactions
-    .filter((t) => t.amount > 0)
+    .filter((t) => t.amount > 0 && !t.merchant)
     .sort((a, b) => new Date(b.created) - new Date(a.created))
     .map((t) => ({
       id: t.id,
