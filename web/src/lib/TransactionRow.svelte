@@ -4,20 +4,37 @@
   export let onToggle;
 </script>
 
-<button class="row" class:ignored={tx.ignored} on:click={() => onToggle(tx.id)}>
-  <span class="icon">
-    {#if tx.logo}
-      <img src={tx.logo} alt="" />
-    {:else}
-      <span class="emoji">{tx.emoji || '💳'}</span>
-    {/if}
-  </span>
-  <span class="meta">
-    <span class="name">{tx.description}</span>
-    <span class="date muted">{shortDate(tx.created)}{tx.ignored ? ' · ignored' : ''}</span>
-  </span>
-  <span class="amount" class:credit={tx.amount > 0}>{money(tx.amount, { sign: true })}</span>
-</button>
+{#if tx.isPayday}
+  <div class="row payday">
+    <span class="icon">
+      {#if tx.logo}
+        <img src={tx.logo} alt="" />
+      {:else}
+        <span class="emoji">{tx.emoji || '💰'}</span>
+      {/if}
+    </span>
+    <span class="meta">
+      <span class="name">{tx.description}</span>
+      <span class="date muted">{shortDate(tx.created)} · payday</span>
+    </span>
+    <span class="amount credit">{money(tx.amount, { sign: true })}</span>
+  </div>
+{:else}
+  <button class="row" class:ignored={tx.ignored} on:click={() => onToggle(tx.id)}>
+    <span class="icon">
+      {#if tx.logo}
+        <img src={tx.logo} alt="" />
+      {:else}
+        <span class="emoji">{tx.emoji || '💳'}</span>
+      {/if}
+    </span>
+    <span class="meta">
+      <span class="name">{tx.description}</span>
+      <span class="date muted">{shortDate(tx.created)}{tx.ignored ? ' · ignored' : ''}</span>
+    </span>
+    <span class="amount" class:credit={tx.amount > 0}>{money(tx.amount, { sign: true })}</span>
+  </button>
+{/if}
 
 <style>
   .row {
@@ -79,5 +96,12 @@
   }
   .ignored .name {
     text-decoration: line-through;
+  }
+  .payday {
+    border-top: 1px solid var(--line);
+    background: color-mix(in srgb, var(--good) 8%, transparent);
+  }
+  .payday .date {
+    color: var(--good);
   }
 </style>
