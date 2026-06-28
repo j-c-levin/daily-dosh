@@ -177,11 +177,19 @@ async function handleState(user) {
 function buildReadyState(user, transactions) {
   const { paydayDate, nextPaydayDate, daysInPeriod, disposablePot } = user.period;
   const ignored = new Set(user.ignoredTransactionIds ?? []);
+  const paydayId = user.period.paydayTransactionId ?? null;
 
   const cutoff = periodCutoff(user.period, transactions, user);
+  // `>=` keeps the payday credit itself in the list as the bottom-of-list anchor;
+  // anything before it still belongs to last month.
   const periodTx = transactions
-    .filter((t) => new Date(t.created) > new Date(cutoff))
+    .filter((t) => new Date(t.created) >= new Date(cutoff))
     .sort((a, b) => new Date(b.created) - new Date(a.created));
+
+  // Identify the payday credit so the UI can mark it and keep it out of the
+  // ignore toggle (it's income - ignoring it would corrupt the spend figure).
+  const isPayday = (t) =>
+    paydayId ? t.id === paydayId : t.created === cutoff && t.amount > 0;
 
   return {
     status: 'ready',
@@ -190,11 +198,18 @@ function buildReadyState(user, transactions) {
       nextPaydayDate,
       daysInPeriod,
       disposablePot,
-      paydayTransactionId: user.period.paydayTransactionId ?? null,
+      paydayTransactionId: paydayId,
       paydayAt: user.period.paydayAt ?? null,
     },
     employerName: user.employerName,
-    transactions: periodTx.map((t) => mapTransaction(t, ignored)),
+    transactions: periodTx.map((t) => {
+      const row = mapTransaction(t, ignored);
+      if (isPayday(t)) {
+        row.isPayday = true;
+        row.ignored = false; // the payday credit is never counted as ignored spend
+      }
+      return row;
+    }),
     // `currentBalance` and the derived numbers are filled in by the caller,
     // which has just fetched the live balance.
   };
