@@ -9,3 +9,7 @@ export function money(pence, { sign = false } = {}) {
 export function shortDate(iso) {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
+
+export function shortTime(iso) {
+  return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
