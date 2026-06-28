@@ -1,2 +1,17 @@
-website/src/app/store/test-transactions.ts
-dist
+# dependencies
+node_modules/
+
+# builds
+web/dist/
+dist/
+
+# SAM
+.aws-sam/
+
+# local env
+.env
+.env.local
+*.local
+
+# os
+.DS_Store
