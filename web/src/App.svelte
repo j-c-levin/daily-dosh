@@ -3,6 +3,7 @@
   import { api } from './lib/api.js';
   import { money, shortTime } from './lib/format.js';
   import TransactionRow from './lib/TransactionRow.svelte';
+  import BurnDown from './lib/BurnDown.svelte';
 
   const KEY = 'dd_storage_key';
   const REDIRECT_PATH = '/oauth/redirect';
@@ -317,6 +318,17 @@
       <p class="muted">at this pace you'll finish {money(Math.abs(state.projectedOutcome))} {state.projectedOutcome < 0 ? 'down' : 'up'}</p>
     </section>
 
+    <section class="card burndown-card">
+      <BurnDown
+        daysInPeriod={state.period.daysInPeriod}
+        paydayDate={state.period.paydayDate}
+        disposablePot={state.period.disposablePot}
+        daysElapsed={state.daysElapsed}
+        transactions={state.transactions}
+        over={state.safeToSpend < 0}
+      />
+    </section>
+
     <section class="stats">
       <div><span class="muted small">This month's pot</span><b>{money(state.period.disposablePot)}</b></div>
       <div><span class="muted small">Spent so far</span><b>{money(state.spent)}</b></div>
@@ -377,6 +389,9 @@
   }
   .hero.over .hero-value {
     color: var(--bad);
+  }
+  .burndown-card {
+    margin-bottom: 18px;
   }
   .stats {
     display: grid;
