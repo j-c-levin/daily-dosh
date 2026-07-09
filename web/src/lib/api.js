@@ -29,4 +29,6 @@ export const api = {
     req('/api/settings', { method: 'POST', headers: auth(key), body: JSON.stringify({ employerName }) }),
   toggleIgnore: (key, transactionId) =>
     req('/api/ignore', { method: 'POST', headers: auth(key), body: JSON.stringify({ transactionId }) }),
+  toggleRecurring: (key, transactionId) =>
+    req('/api/recurring', { method: 'POST', headers: auth(key), body: JSON.stringify({ transactionId }) }),
 };

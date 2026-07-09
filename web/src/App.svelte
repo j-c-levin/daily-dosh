@@ -117,6 +117,7 @@
   const confirmBuckets = () => action(() => api.confirmBuckets(storageKey));
   const dismissPayday = () => action(() => api.dismissPayday(storageKey, state.payday.id));
   const toggleIgnore = (id) => action(() => api.toggleIgnore(storageKey, id));
+  const toggleRecurring = (id) => action(() => api.toggleRecurring(storageKey, id));
 
   function openReset() {
     const p = state?.period;
@@ -316,6 +317,9 @@
       <p class="hero-value">{money(Math.abs(state.safeToSpend))}</p>
       <p class="muted">building up £{(state.dailyAllowance / 100).toFixed(2)} a day · {state.daysRemaining} days to next payday</p>
       <p class="muted">at this pace you'll finish {money(Math.abs(state.projectedOutcome))} {state.projectedOutcome < 0 ? 'down' : 'up'}</p>
+      {#if state.committed?.total > 0}
+        <p class="muted">{money(state.committed.total)} of bills still to come before payday</p>
+      {/if}
     </section>
 
     <section class="card burndown-card">
@@ -339,7 +343,7 @@
       <h3>This month <span class="muted small">· tap to ignore</span></h3>
       {#if state.transactions.length}
         {#each state.transactions as tx (tx.id)}
-          <TransactionRow {tx} onToggle={toggleIgnore} />
+          <TransactionRow {tx} onToggle={toggleIgnore} onRecur={toggleRecurring} />
         {/each}
       {:else}
         <p class="muted">No transactions since payday.</p>

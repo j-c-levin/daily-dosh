@@ -27,6 +27,14 @@ you can spend today = days since payday × (disposable pot ÷ days in month) −
   budget.
 - **Spent so far** — derived live from your current balance, with an
   ad-hoc *ignore* toggle on any transaction to take it out of the calculation.
+- **Recurring bills** — mark any debit as a monthly bill (↻ on its row).
+  Bills expected before next payday that haven't landed yet are shown under
+  the headline as committed spend (informational — the headline maths is
+  unchanged).
+- **Projection & rollover** — the hero shows a pace-based end-of-month
+  outcome and a burn-down sparkline; when a new payday is confirmed the app
+  says how last month closed. The site installs to a phone home screen as a
+  PWA.
 - The financial month is always ~30 days, well inside Monzo's 90-day API
   history limit, so no transaction history is stored server-side — only your
   refresh token and a few settings.

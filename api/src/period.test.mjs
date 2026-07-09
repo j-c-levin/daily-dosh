@@ -8,6 +8,7 @@ import {
   periodFromDates,
   buildPeriod,
   daysElapsed,
+  upcomingCommitted,
 } from './period.mjs';
 
 // Helper to build a plausible inbound-credit transaction on the payday window.
@@ -283,5 +284,74 @@ describe('daysElapsed', () => {
     // In December the UK is on GMT (UTC+0), so no offset applies.
     const result = daysElapsed('2025-12-25', new Date('2025-12-30T23:30:00.000Z'));
     assert.equal(result, 6);
+  });
+});
+
+describe('upcomingCommitted', () => {
+  const PERIOD = { paydayDate: '2026-01-25', nextPaydayDate: '2026-02-25' };
+  const rent = { sourceId: 'src1', name: 'Big Landlord Ltd', amount: -95000, day: 1 };
+  const debit = (description, extra = {}) =>
+    ({ id: 'x', created: '2026-01-26T09:00:00.000Z', amount: -95000, description, ignored: false, ...extra });
+
+  test('a bill not yet seen this period is upcoming, dated by its day-of-month', () => {
+    const result = upcomingCommitted([rent], [debit('Coffee Shop')], PERIOD);
+    assert.deepEqual(result, {
+      total: 95000,
+      items: [{ name: 'Big Landlord Ltd', amount: -95000, expectedDate: '2026-02-01' }],
+    });
+  });
+
+  test('an occurred instance this period suppresses the bill', () => {
+    const result = upcomingCommitted([rent], [debit('BIG LANDLORD LTD')], PERIOD);
+    assert.deepEqual(result, { total: 0, items: [] });
+  });
+
+  test('matches substring either way, case-insensitively', () => {
+    // tx description is a substring of the recurring name
+    const result = upcomingCommitted([rent], [debit('big landlord')], PERIOD);
+    assert.equal(result.items.length, 0);
+  });
+
+  test('amounts drift: a different amount still counts as occurred', () => {
+    const result = upcomingCommitted([rent], [debit('Big Landlord Ltd', { amount: -98000 })], PERIOD);
+    assert.deepEqual(result.items, []);
+  });
+
+  test('ignored instances do not count as occurred', () => {
+    const result = upcomingCommitted([rent], [debit('Big Landlord Ltd', { ignored: true })], PERIOD);
+    assert.equal(result.total, 95000);
+  });
+
+  test('credits never match', () => {
+    const refund = debit('Big Landlord Ltd', { amount: 95000 });
+    const result = upcomingCommitted([rent], [refund], PERIOD);
+    assert.equal(result.total, 95000);
+  });
+
+  test('day 31 clamps to the last day of a shorter month', () => {
+    const item = { sourceId: 's', name: 'Gym', amount: -3999, day: 31 };
+    // Feb 2026 has 28 days, so "the 31st" lands on the 28th.
+    const period = { paydayDate: '2026-02-01', nextPaydayDate: '2026-03-01' };
+    const result = upcomingCommitted([item], [], period);
+    assert.equal(result.items[0].expectedDate, '2026-02-28');
+  });
+
+  test('a bill whose day never falls inside a short period is skipped', () => {
+    const item = { sourceId: 's', name: 'Gym', amount: -3999, day: 20 };
+    const period = { paydayDate: '2026-01-05', nextPaydayDate: '2026-01-10' };
+    const result = upcomingCommitted([item], [], period);
+    assert.deepEqual(result, { total: 0, items: [] });
+  });
+
+  test('empty or absent recurring list yields zero', () => {
+    assert.deepEqual(upcomingCommitted([], [debit('Rent')], PERIOD), { total: 0, items: [] });
+    assert.deepEqual(upcomingCommitted(undefined, [], PERIOD), { total: 0, items: [] });
+  });
+
+  test('multiple upcoming bills sum into a positive total', () => {
+    const gym = { sourceId: 'src2', name: 'Gym', amount: -3999, day: 3 };
+    const result = upcomingCommitted([rent, gym], [], PERIOD);
+    assert.equal(result.total, 98999);
+    assert.equal(result.items.length, 2);
   });
 });

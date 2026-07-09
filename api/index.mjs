@@ -15,6 +15,7 @@ import {
   buildPeriod,
   periodFromDates,
   daysElapsed,
+  upcomingCommitted,
 } from './src/period.mjs';
 
 const CLIENT_ID = process.env.MONZO_CLIENT_ID;
@@ -192,6 +193,29 @@ function buildReadyState(user, transactions) {
   const isPayday = (t) =>
     paydayId ? t.id === paydayId : t.created === cutoff && t.amount > 0;
 
+  // Same matching rule as upcomingCommitted: descriptions match a recurring
+  // item case-insensitively, substring either way (amounts drift, names don't).
+  const recurring = user.recurring ?? [];
+  const isRecurring = (desc) => {
+    const d = (desc ?? '').toLowerCase();
+    if (!d) return false;
+    return recurring.some((r) => {
+      const n = r.name.toLowerCase();
+      return d.includes(n) || n.includes(d);
+    });
+  };
+
+  const rows = periodTx.map((t) => {
+    const row = mapTransaction(t, ignored);
+    if (isPayday(t)) {
+      row.isPayday = true;
+      row.ignored = false; // the payday credit is never counted as ignored spend
+    } else if (row.amount < 0 && isRecurring(row.description)) {
+      row.recurring = true;
+    }
+    return row;
+  });
+
   return {
     status: 'ready',
     period: {
@@ -203,14 +227,8 @@ function buildReadyState(user, transactions) {
       paydayAt: user.period.paydayAt ?? null,
     },
     employerName: user.employerName,
-    transactions: periodTx.map((t) => {
-      const row = mapTransaction(t, ignored);
-      if (isPayday(t)) {
-        row.isPayday = true;
-        row.ignored = false; // the payday credit is never counted as ignored spend
-      }
-      return row;
-    }),
+    transactions: rows,
+    committed: upcomingCommitted(recurring, rows, user.period),
     // `currentBalance` and the derived numbers are filled in by the caller,
     // which has just fetched the live balance.
   };
@@ -349,6 +367,37 @@ async function handleIgnore(event, user) {
   return handleStateWithBalance(user);
 }
 
+/** Toggle a transaction as a recurring monthly bill (rent, subscriptions…). */
+async function handleRecurring(event, user) {
+  const { transactionId } = parseBody(event);
+  if (!transactionId) return json(400, { error: 'transactionId required' });
+
+  const list = user.recurring ?? [];
+  const idx = list.findIndex((r) => r.sourceId === transactionId);
+  if (idx >= 0) {
+    list.splice(idx, 1);
+  } else {
+    user = await ensureAccessToken(user);
+    user = await ensureAccount(user);
+    const all = await getTransactions(user.accessToken, user.accountId, lookbackIso());
+    const tx = (all.transactions ?? []).find((t) => t.id === transactionId);
+    if (!tx) return json(400, { error: 'transaction not found' });
+    if (tx.amount >= 0) return json(400, { error: 'only debits can be recurring' });
+    if (tx.id === user.period?.paydayTransactionId) {
+      return json(400, { error: 'payday cannot be recurring' });
+    }
+    list.push({
+      sourceId: tx.id,
+      name: tx.counterparty?.name || tx.merchant?.name || tx.description,
+      amount: tx.amount,
+      day: new Date(tx.created).getUTCDate(),
+    });
+  }
+  user.recurring = list;
+  await saveUser(user);
+  return handleStateWithBalance(user);
+}
+
 // ---- router ----------------------------------------------------------------
 
 export async function handler(event) {
@@ -370,6 +419,7 @@ export async function handler(event) {
       '/api/reset',
       '/api/settings',
       '/api/ignore',
+      '/api/recurring',
     ];
     if (routesNeedingUser.includes(path)) {
       const authHeader = event.headers?.authorization ?? '';
@@ -387,6 +437,7 @@ export async function handler(event) {
         if (path === '/api/reset' && method === 'POST') return await handleReset(event, user);
         if (path === '/api/settings' && method === 'POST') return await handleSettings(event, user);
         if (path === '/api/ignore' && method === 'POST') return await handleIgnore(event, user);
+        if (path === '/api/recurring' && method === 'POST') return await handleRecurring(event, user);
       } catch (e) {
         if (e.code === 'reauth') return json(200, { status: 'reauth' });
         throw e;

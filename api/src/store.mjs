@@ -18,6 +18,9 @@ const doc = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
  *   period: { paydayDate, nextPaydayDate, daysInPeriod, disposablePot },
  *   ignoredTransactionIds: string[],
  *   dismissedPaydayIds: string[],
+ *   recurring: [{ sourceId, name, amount, day }],
+ *     // monthly bills marked from a transaction: the source transaction id,
+ *     // its display name, observed amount (negative pence) and day-of-month
  *   lastKnown: { safeToSpend, date }   // last ready-state position, for rollover
  * }
  */
