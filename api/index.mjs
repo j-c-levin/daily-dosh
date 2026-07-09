@@ -163,6 +163,7 @@ async function handleState(user) {
       status: 'new_month',
       employerName: user.employerName,
       payday: { id: payday.id, date: detectedDate, amount: payday.amount },
+      lastMonth: user.lastKnown ?? null,
     });
   }
 
@@ -238,6 +239,9 @@ function withBalance(state, currentBalance) {
     // spent. Unspent days roll forward into a surplus; overspending shows as
     // negative and is pulled back as each new day adds another day's allowance.
     safeToSpend: allowedSoFar - spent,
+    // Straight-line extrapolation of the average daily spend so far across the
+    // whole period. Positive = on pace to finish with money left; negative = overshoot.
+    projectedOutcome: Math.round(disposablePot - (spent / elapsed) * daysInPeriod),
   };
 }
 
@@ -246,7 +250,18 @@ async function handleStateWithBalance(user) {
   const payload = JSON.parse(result.body);
   if (payload.status !== 'ready') return result;
   const balance = await getBalance(user.accessToken, user.accountId);
-  return json(200, withBalance(payload, balance.balance));
+  const ready = withBalance(payload, balance.balance);
+
+  // Persist the last-seen ready position so it can be played back once this
+  // month rolls over and the balance-derived figures are no longer computable.
+  const safeToSpend = Math.round(ready.safeToSpend);
+  const date = new Date().toISOString().slice(0, 10);
+  if (user.lastKnown?.safeToSpend !== safeToSpend || user.lastKnown?.date !== date) {
+    user.lastKnown = { safeToSpend, date };
+    await saveUser(user);
+  }
+
+  return json(200, ready);
 }
 
 async function handleConfirmBuckets(user) {

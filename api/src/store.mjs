@@ -16,7 +16,9 @@ const doc = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
  *   id, refreshToken, accessToken, accessTokenExpiry (epoch seconds),
  *   accountId, employerName,
  *   period: { paydayDate, nextPaydayDate, daysInPeriod, disposablePot },
- *   ignoredTransactionIds: string[]
+ *   ignoredTransactionIds: string[],
+ *   dismissedPaydayIds: string[],
+ *   lastKnown: { safeToSpend, date }   // last ready-state position, for rollover
  * }
  */
 

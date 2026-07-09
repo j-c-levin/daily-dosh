@@ -108,6 +108,9 @@
     }
   }
 
+  // Whole days between two yyyy-mm-dd dates, for the "as of" staleness check.
+  const daysBetween = (from, to) => Math.round((new Date(to) - new Date(from)) / 86400000);
+
   const saveEmployer = () =>
     employerInput.trim() && action(() => api.setEmployer(storageKey, employerInput.trim()));
   const confirmBuckets = () => action(() => api.confirmBuckets(storageKey));
@@ -288,6 +291,12 @@
         {new Date(state.payday.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}.</p>
       <p>If it's your pay, move everything into your pots first — whatever's left becomes this
         month's spending money.</p>
+      {#if state.lastMonth}
+        <p class="muted">Last month you finished {money(Math.abs(state.lastMonth.safeToSpend))}
+          {state.lastMonth.safeToSpend < 0 ? 'behind' : 'ahead'}{daysBetween(state.lastMonth.date, state.payday.date) > 1
+            ? ` (as of ${new Date(state.lastMonth.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })})`
+            : ''}</p>
+      {/if}
       <button class="btn" disabled={busy} on:click={confirmBuckets}>Yes — I've sorted my pots</button>
       <button class="btn secondary" disabled={busy} on:click={dismissPayday}>No, that's not my pay</button>
     </div>
@@ -305,6 +314,7 @@
       <p class="hero-label">{state.safeToSpend < 0 ? 'Behind by' : 'Safe to spend'}</p>
       <p class="hero-value">{money(Math.abs(state.safeToSpend))}</p>
       <p class="muted">building up £{(state.dailyAllowance / 100).toFixed(2)} a day · {state.daysRemaining} days to next payday</p>
+      <p class="muted">at this pace you'll finish {money(Math.abs(state.projectedOutcome))} {state.projectedOutcome < 0 ? 'down' : 'up'}</p>
     </section>
 
     <section class="stats">
