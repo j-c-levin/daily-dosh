@@ -2,6 +2,7 @@
   import { money, shortDate } from './format.js';
   export let tx;
   export let onToggle;
+  export let onRecur = null;
 </script>
 
 {#if tx.isPayday}
@@ -20,37 +21,63 @@
     <span class="amount credit">{money(tx.amount, { sign: true })}</span>
   </div>
 {:else}
-  <button class="row" class:ignored={tx.ignored} on:click={() => onToggle(tx.id)}>
-    <span class="icon">
-      {#if tx.logo}
-        <img src={tx.logo} alt="" />
-      {:else}
-        <span class="emoji">{tx.emoji || '💳'}</span>
-      {/if}
-    </span>
-    <span class="meta">
-      <span class="name">{tx.description}</span>
-      <span class="date muted">{shortDate(tx.created)}{tx.ignored ? ' · ignored' : ''}</span>
-    </span>
-    <span class="amount" class:credit={tx.amount > 0}>{money(tx.amount, { sign: true })}</span>
-  </button>
+  <div class="row" class:ignored={tx.ignored}>
+    <button class="tap" on:click={() => onToggle(tx.id)}>
+      <span class="icon">
+        {#if tx.logo}
+          <img src={tx.logo} alt="" />
+        {:else}
+          <span class="emoji">{tx.emoji || '💳'}</span>
+        {/if}
+      </span>
+      <span class="meta">
+        <span class="name">{tx.description}</span>
+        <span class="date muted">{shortDate(tx.created)}{tx.ignored ? ' · ignored' : ''}{tx.recurring ? ' · monthly' : ''}</span>
+      </span>
+      <span class="amount" class:credit={tx.amount > 0}>{money(tx.amount, { sign: true })}</span>
+    </button>
+    {#if onRecur && tx.amount < 0}
+      <button class="recur" class:active={tx.recurring}
+        aria-label={tx.recurring ? 'unmark as a monthly bill' : 'mark as a monthly bill'}
+        on:click={() => onRecur(tx.id)}>↻</button>
+    {/if}
+  </div>
 {/if}
 
 <style>
   .row {
     display: flex;
     align-items: center;
-    gap: 12px;
     width: 100%;
+    border-bottom: 1px solid var(--line);
+  }
+  .row:last-child {
+    border-bottom: none;
+  }
+  .tap {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
     background: none;
     border: none;
     padding: 12px 4px;
     text-align: left;
     color: var(--text);
-    border-bottom: 1px solid var(--line);
   }
-  .row:last-child {
-    border-bottom: none;
+  .recur {
+    flex: 0 0 auto;
+    background: none;
+    border: none;
+    color: var(--muted);
+    opacity: 0.55;
+    font-size: 17px;
+    padding: 12px 6px;
+  }
+  .recur.active {
+    color: var(--good);
+    opacity: 1;
   }
   .icon {
     flex: 0 0 38px;
@@ -98,6 +125,8 @@
     text-decoration: line-through;
   }
   .payday {
+    gap: 12px;
+    padding: 12px 4px;
     border-top: 1px solid var(--line);
     background: color-mix(in srgb, var(--good) 8%, transparent);
   }

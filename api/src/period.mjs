@@ -180,4 +180,46 @@ export function daysElapsed(paydayDate, now = new Date()) {
   return Math.max(1, diff);
 }
 
+/**
+ * Upcoming committed spend: recurring bills the user has marked that haven't
+ * hit yet this period. A bill has "occurred" if any non-ignored debit's
+ * description matches its name (case-insensitive substring, either way) -
+ * amounts drift month to month, so amount is never matched on.
+ *
+ * The expected date is the item's day-of-month landing inside
+ * [paydayDate, nextPaydayDate), with day 29-31 clamped to the month's last
+ * day. A bill whose expected date has passed but hasn't appeared is still
+ * upcoming (late, not gone); one whose day never falls inside the period is
+ * skipped. Returns { total, items: [{ name, amount, expectedDate }] } with
+ * total in positive pence (item amounts stay negative, like transactions).
+ */
+export function upcomingCommitted(recurring, periodTransactions, period) {
+  const start = utcMidnight(period.paydayDate);
+  const end = utcMidnight(period.nextPaydayDate);
+  const items = [];
+
+  for (const item of recurring ?? []) {
+    const needle = item.name.toLowerCase();
+    const occurred = periodTransactions.some((t) => {
+      if (t.ignored || t.amount >= 0) return false;
+      const desc = (t.description ?? '').toLowerCase();
+      return desc !== '' && (desc.includes(needle) || needle.includes(desc));
+    });
+    if (occurred) continue;
+
+    // The period spans at most two calendar months; the expected instance is
+    // the item's day (clamped to each month's length) that lands inside it.
+    const candidates = [start, end].map((d) => {
+      const lastDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+      return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), Math.min(item.day, lastDay)));
+    });
+    const expected = candidates.find((d) => d >= start && d < end);
+    if (!expected) continue;
+
+    items.push({ name: item.name, amount: item.amount, expectedDate: isoDate(expected) });
+  }
+
+  return { total: items.reduce((sum, i) => sum - i.amount, 0), items };
+}
+
 export { isoDate };

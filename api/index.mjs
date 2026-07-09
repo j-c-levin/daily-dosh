@@ -15,6 +15,7 @@ import {
   buildPeriod,
   periodFromDates,
   daysElapsed,
+  upcomingCommitted,
 } from './src/period.mjs';
 
 const CLIENT_ID = process.env.MONZO_CLIENT_ID;
@@ -163,6 +164,7 @@ async function handleState(user) {
       status: 'new_month',
       employerName: user.employerName,
       payday: { id: payday.id, date: detectedDate, amount: payday.amount },
+      lastMonth: user.lastKnown ?? null,
     });
   }
 
@@ -191,6 +193,29 @@ function buildReadyState(user, transactions) {
   const isPayday = (t) =>
     paydayId ? t.id === paydayId : t.created === cutoff && t.amount > 0;
 
+  // Same matching rule as upcomingCommitted: descriptions match a recurring
+  // item case-insensitively, substring either way (amounts drift, names don't).
+  const recurring = user.recurring ?? [];
+  const isRecurring = (desc) => {
+    const d = (desc ?? '').toLowerCase();
+    if (!d) return false;
+    return recurring.some((r) => {
+      const n = r.name.toLowerCase();
+      return d.includes(n) || n.includes(d);
+    });
+  };
+
+  const rows = periodTx.map((t) => {
+    const row = mapTransaction(t, ignored);
+    if (isPayday(t)) {
+      row.isPayday = true;
+      row.ignored = false; // the payday credit is never counted as ignored spend
+    } else if (row.amount < 0 && isRecurring(row.description)) {
+      row.recurring = true;
+    }
+    return row;
+  });
+
   return {
     status: 'ready',
     period: {
@@ -202,14 +227,8 @@ function buildReadyState(user, transactions) {
       paydayAt: user.period.paydayAt ?? null,
     },
     employerName: user.employerName,
-    transactions: periodTx.map((t) => {
-      const row = mapTransaction(t, ignored);
-      if (isPayday(t)) {
-        row.isPayday = true;
-        row.ignored = false; // the payday credit is never counted as ignored spend
-      }
-      return row;
-    }),
+    transactions: rows,
+    committed: upcomingCommitted(recurring, rows, user.period),
     // `currentBalance` and the derived numbers are filled in by the caller,
     // which has just fetched the live balance.
   };
@@ -238,6 +257,9 @@ function withBalance(state, currentBalance) {
     // spent. Unspent days roll forward into a surplus; overspending shows as
     // negative and is pulled back as each new day adds another day's allowance.
     safeToSpend: allowedSoFar - spent,
+    // Straight-line extrapolation of the average daily spend so far across the
+    // whole period. Positive = on pace to finish with money left; negative = overshoot.
+    projectedOutcome: Math.round(disposablePot - (spent / elapsed) * daysInPeriod),
   };
 }
 
@@ -246,7 +268,18 @@ async function handleStateWithBalance(user) {
   const payload = JSON.parse(result.body);
   if (payload.status !== 'ready') return result;
   const balance = await getBalance(user.accessToken, user.accountId);
-  return json(200, withBalance(payload, balance.balance));
+  const ready = withBalance(payload, balance.balance);
+
+  // Persist the last-seen ready position so it can be played back once this
+  // month rolls over and the balance-derived figures are no longer computable.
+  const safeToSpend = Math.round(ready.safeToSpend);
+  const date = new Date().toISOString().slice(0, 10);
+  if (user.lastKnown?.safeToSpend !== safeToSpend || user.lastKnown?.date !== date) {
+    user.lastKnown = { safeToSpend, date };
+    await saveUser(user);
+  }
+
+  return json(200, ready);
 }
 
 async function handleConfirmBuckets(user) {
@@ -334,6 +367,37 @@ async function handleIgnore(event, user) {
   return handleStateWithBalance(user);
 }
 
+/** Toggle a transaction as a recurring monthly bill (rent, subscriptions…). */
+async function handleRecurring(event, user) {
+  const { transactionId } = parseBody(event);
+  if (!transactionId) return json(400, { error: 'transactionId required' });
+
+  const list = user.recurring ?? [];
+  const idx = list.findIndex((r) => r.sourceId === transactionId);
+  if (idx >= 0) {
+    list.splice(idx, 1);
+  } else {
+    user = await ensureAccessToken(user);
+    user = await ensureAccount(user);
+    const all = await getTransactions(user.accessToken, user.accountId, lookbackIso());
+    const tx = (all.transactions ?? []).find((t) => t.id === transactionId);
+    if (!tx) return json(400, { error: 'transaction not found' });
+    if (tx.amount >= 0) return json(400, { error: 'only debits can be recurring' });
+    if (tx.id === user.period?.paydayTransactionId) {
+      return json(400, { error: 'payday cannot be recurring' });
+    }
+    list.push({
+      sourceId: tx.id,
+      name: tx.counterparty?.name || tx.merchant?.name || tx.description,
+      amount: tx.amount,
+      day: new Date(tx.created).getUTCDate(),
+    });
+  }
+  user.recurring = list;
+  await saveUser(user);
+  return handleStateWithBalance(user);
+}
+
 // ---- router ----------------------------------------------------------------
 
 export async function handler(event) {
@@ -355,9 +419,12 @@ export async function handler(event) {
       '/api/reset',
       '/api/settings',
       '/api/ignore',
+      '/api/recurring',
     ];
     if (routesNeedingUser.includes(path)) {
-      const storageKey = query.storage_key;
+      const authHeader = event.headers?.authorization ?? '';
+      const bearerMatch = /^Bearer\s+(.+)$/i.exec(authHeader);
+      const storageKey = bearerMatch?.[1] ?? query.storage_key;
       if (!storageKey) return json(400, { error: 'storage_key required' });
       const user = await getUser(storageKey);
       if (!user) return json(404, { error: 'unknown storage key' });
@@ -370,6 +437,7 @@ export async function handler(event) {
         if (path === '/api/reset' && method === 'POST') return await handleReset(event, user);
         if (path === '/api/settings' && method === 'POST') return await handleSettings(event, user);
         if (path === '/api/ignore' && method === 'POST') return await handleIgnore(event, user);
+        if (path === '/api/recurring' && method === 'POST') return await handleRecurring(event, user);
       } catch (e) {
         if (e.code === 'reauth') return json(200, { status: 'reauth' });
         throw e;

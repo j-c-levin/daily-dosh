@@ -5,6 +5,9 @@
   "type": "module",
   "main": "index.mjs",
   "license": "ISC",
+  "scripts": {
+    "test": "node --test"
+  },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.600.0",
     "@aws-sdk/lib-dynamodb": "^3.600.0"

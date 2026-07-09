@@ -3,6 +3,7 @@
   import { api } from './lib/api.js';
   import { money, shortTime } from './lib/format.js';
   import TransactionRow from './lib/TransactionRow.svelte';
+  import BurnDown from './lib/BurnDown.svelte';
 
   const KEY = 'dd_storage_key';
   const REDIRECT_PATH = '/oauth/redirect';
@@ -108,11 +109,15 @@
     }
   }
 
+  // Whole days between two yyyy-mm-dd dates, for the "as of" staleness check.
+  const daysBetween = (from, to) => Math.round((new Date(to) - new Date(from)) / 86400000);
+
   const saveEmployer = () =>
     employerInput.trim() && action(() => api.setEmployer(storageKey, employerInput.trim()));
   const confirmBuckets = () => action(() => api.confirmBuckets(storageKey));
   const dismissPayday = () => action(() => api.dismissPayday(storageKey, state.payday.id));
   const toggleIgnore = (id) => action(() => api.toggleIgnore(storageKey, id));
+  const toggleRecurring = (id) => action(() => api.toggleRecurring(storageKey, id));
 
   function openReset() {
     const p = state?.period;
@@ -288,6 +293,12 @@
         {new Date(state.payday.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}.</p>
       <p>If it's your pay, move everything into your pots first — whatever's left becomes this
         month's spending money.</p>
+      {#if state.lastMonth}
+        <p class="muted">Last month you finished {money(Math.abs(state.lastMonth.safeToSpend))}
+          {state.lastMonth.safeToSpend < 0 ? 'behind' : 'ahead'}{daysBetween(state.lastMonth.date, state.payday.date) > 1
+            ? ` (as of ${new Date(state.lastMonth.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })})`
+            : ''}</p>
+      {/if}
       <button class="btn" disabled={busy} on:click={confirmBuckets}>Yes — I've sorted my pots</button>
       <button class="btn secondary" disabled={busy} on:click={dismissPayday}>No, that's not my pay</button>
     </div>
@@ -305,6 +316,21 @@
       <p class="hero-label">{state.safeToSpend < 0 ? 'Behind by' : 'Safe to spend'}</p>
       <p class="hero-value">{money(Math.abs(state.safeToSpend))}</p>
       <p class="muted">building up £{(state.dailyAllowance / 100).toFixed(2)} a day · {state.daysRemaining} days to next payday</p>
+      <p class="muted">at this pace you'll finish {money(Math.abs(state.projectedOutcome))} {state.projectedOutcome < 0 ? 'down' : 'up'}</p>
+      {#if state.committed?.total > 0}
+        <p class="muted">{money(state.committed.total)} of bills still to come before payday</p>
+      {/if}
+    </section>
+
+    <section class="card burndown-card">
+      <BurnDown
+        daysInPeriod={state.period.daysInPeriod}
+        paydayDate={state.period.paydayDate}
+        disposablePot={state.period.disposablePot}
+        daysElapsed={state.daysElapsed}
+        transactions={state.transactions}
+        over={state.safeToSpend < 0}
+      />
     </section>
 
     <section class="stats">
@@ -317,7 +343,7 @@
       <h3>This month <span class="muted small">· tap to ignore</span></h3>
       {#if state.transactions.length}
         {#each state.transactions as tx (tx.id)}
-          <TransactionRow {tx} onToggle={toggleIgnore} />
+          <TransactionRow {tx} onToggle={toggleIgnore} onRecur={toggleRecurring} />
         {/each}
       {:else}
         <p class="muted">No transactions since payday.</p>
@@ -367,6 +393,9 @@
   }
   .hero.over .hero-value {
     color: var(--bad);
+  }
+  .burndown-card {
+    margin-bottom: 18px;
   }
   .stats {
     display: grid;
