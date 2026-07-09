@@ -357,7 +357,9 @@ export async function handler(event) {
       '/api/ignore',
     ];
     if (routesNeedingUser.includes(path)) {
-      const storageKey = query.storage_key;
+      const authHeader = event.headers?.authorization ?? '';
+      const bearerMatch = /^Bearer\s+(.+)$/i.exec(authHeader);
+      const storageKey = bearerMatch?.[1] ?? query.storage_key;
       if (!storageKey) return json(400, { error: 'storage_key required' });
       const user = await getUser(storageKey);
       if (!user) return json(404, { error: 'unknown storage key' });
