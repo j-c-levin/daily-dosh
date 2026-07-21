@@ -2,6 +2,10 @@
 // Zero means "spent exactly what you've earned so far"; above zero is saving, below is
 // overspending. The final (today) point is pinned to the balance-derived safeToSpend so
 // the chart always ends exactly where the hero number says.
+//
+// Index d is the position at the END of calendar day-offset d−1 from payday (the server
+// counts payday itself as day 1). So payday-day spend (offset 0) lands in index 1, and
+// index 0 is always the zero anchor before any spend has been attributed.
 
 // UK civil date (matches the server's day boundary), not the transaction's UTC date.
 const londonDate = (iso) =>
@@ -27,12 +31,13 @@ export function buildNetSeries({
     byDay.set(d, (byDay.get(d) || 0) - t.amount);
   }
 
-  // Day 0 is the zero anchor, so same-day spend rolls into day 1's running total
-  // rather than being dropped.
-  let spent = byDay.get(0) || 0;
+  // Index d covers spend through the end of calendar day-offset d−1, so we accumulate the
+  // PREVIOUS day's bucket before pushing: today's spend must not retroactively move
+  // yesterday's point. Day-0 spend (payday itself) rolls into index 1, not index 0.
+  let spent = 0;
   const series = [0];
   for (let d = 1; d <= lastDay; d++) {
-    spent += byDay.get(d) || 0;
+    spent += byDay.get(d - 1) || 0;
     series.push(d * dailyAllowance - spent);
   }
 

@@ -28,6 +28,11 @@ payday:
 net(day) = day × dailyAllowance − cumulativeSpend(day)
 ```
 
+`net(d)` at series index `d` covers spend through calendar day-offset `d−1` —
+i.e. it is the end-of-previous-day position (the server counts payday itself
+as day 1, so payday-day spend at offset 0 lands in index 1). This keeps
+today's spend from retroactively dragging down yesterday's already-drawn dot.
+
 - Day 0 (payday) is 0 by definition.
 - The y-axis baseline is a horizontal **net-zero line**: above = saving,
   below = overspending. Ending the month at 0 means you spent exactly what you
@@ -78,7 +83,10 @@ the untravelled right side shows the remaining days.
 
 ## Edge cases
 
-- Day 1 of a month (single point): renders a dot pinned to `safeToSpend`.
+- Day 1 of a month (single point): the server's `daysElapsed` is never below
+  1, so in practice day 1 renders as a two-point line (payday anchor plus
+  today's dot); the single-point branch (`daysElapsed` 0) only exists as
+  defence-in-depth and renders a dot pinned to `safeToSpend`.
 - `projectedOutcome` division by `elapsed` is already guarded server-side.
 - Period rolled over (`daysElapsed > daysInPeriod`): trail is clamped to the
   period end, as today.

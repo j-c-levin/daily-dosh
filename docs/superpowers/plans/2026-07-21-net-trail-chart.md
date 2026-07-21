@@ -30,7 +30,7 @@
 
 **Interfaces:**
 - Consumes: nothing (pure module).
-- Produces: `buildNetSeries({ transactions, paydayDate, daysInPeriod, daysElapsed, dailyAllowance, safeToSpend }) -> number[]` — element `d` is the net position in pence at end of day `d` since payday; index 0 is payday (always `0` when the series has more than one point); the **last** element is always exactly `safeToSpend`. Length is `min(daysElapsed, daysInPeriod) + 1`, minimum 1.
+- Produces: `buildNetSeries({ transactions, paydayDate, daysInPeriod, daysElapsed, dailyAllowance, safeToSpend }) -> number[]` — element `d` is the net position in pence at the **end of calendar day-offset `d−1`** from payday (the server counts payday itself as day 1, so payday-day spend at offset 0 lands in index 1); index 0 is always the zero anchor; the **last** element is always exactly `safeToSpend`. Length is `min(daysElapsed, daysInPeriod) + 1`, minimum 1.
 
 - [ ] **Step 1: Add the test script to `web/package.json`**
 
@@ -96,8 +96,9 @@ test('credits net against spend', () => {
     transactions: [tx('2026-07-02', -300), tx('2026-07-02', 100)],
     safeToSpend: 0,
   });
-  // Day 1 net spend is 200: net(1) = 100 − 200 = −100; last point pinned to 0.
-  assert.deepEqual(series, [0, -100, 0]);
+  // Day-1 (offset 1) net spend is 200, but it lands in index 2, not index 1: index 1
+  // still shows the +100 the hero displayed at end of payday. Last point pinned to 0.
+  assert.deepEqual(series, [0, 100, 0]);
 });
 
 test('ignored and payday transactions are excluded', () => {
@@ -120,9 +121,10 @@ test('last point is pinned to safeToSpend even when transactions disagree', () =
     transactions: [tx('2026-07-02', -100)],
     safeToSpend: -6230,
   });
-  // Transaction-derived net(2) would be 100; the live balance says −6230. Hero wins.
+  // The offset-1 spend hasn't rolled into index 2 yet (that happens next day); transaction-
+  // derived net(2) would be 100, but the live balance says −6230. Hero wins regardless.
   assert.equal(series.at(-1), -6230);
-  assert.deepEqual(series.slice(0, -1), [0, 0]);
+  assert.deepEqual(series.slice(0, -1), [0, 100]);
 });
 
 test('payday itself (daysElapsed 0) is a single point pinned to safeToSpend', () => {
@@ -146,6 +148,17 @@ test('daysElapsed past the period end clamps to daysInPeriod', () => {
   assert.equal(series.length, 3); // days 0, 1, 2
   assert.equal(series.at(-1), 200);
 });
+
+test("today's spend does not alter yesterday's point", () => {
+  const series = buildNetSeries({
+    ...base,
+    daysElapsed: 3,
+    transactions: [tx('2026-07-03', -250)], // spent today (offset 2)
+    safeToSpend: 50,
+  });
+  // Yesterday (index 2) still shows the position the hero showed that day: +200.
+  assert.deepEqual(series, [0, 100, 200, 50]);
+});
 ```
 
 - [ ] **Step 3: Run tests to verify they fail**
@@ -162,6 +175,10 @@ Create `web/src/lib/netSeries.js`:
 // Zero means "spent exactly what you've earned so far"; above zero is saving, below is
 // overspending. The final (today) point is pinned to the balance-derived safeToSpend so
 // the chart always ends exactly where the hero number says.
+//
+// Index d is the position at the END of calendar day-offset d−1 from payday (the server
+// counts payday itself as day 1). So payday-day spend (offset 0) lands in index 1, and
+// index 0 is always the zero anchor before any spend has been attributed.
 
 // UK civil date (matches the server's day boundary), not the transaction's UTC date.
 const londonDate = (iso) =>
@@ -187,12 +204,13 @@ export function buildNetSeries({
     byDay.set(d, (byDay.get(d) || 0) - t.amount);
   }
 
-  // Day 0 is the zero anchor, so same-day spend rolls into day 1's running total
-  // rather than being dropped.
-  let spent = byDay.get(0) || 0;
+  // Index d covers spend through the end of calendar day-offset d−1, so we accumulate the
+  // PREVIOUS day's bucket before pushing: today's spend must not retroactively move
+  // yesterday's point. Day-0 spend (payday itself) rolls into index 1, not index 0.
+  let spent = 0;
   const series = [0];
   for (let d = 1; d <= lastDay; d++) {
-    spent += byDay.get(d) || 0;
+    spent += byDay.get(d - 1) || 0;
     series.push(d * dailyAllowance - spent);
   }
 
@@ -207,7 +225,7 @@ Note: when `lastDay` is 0 the series is the single element `[safeToSpend]` — t
 - [ ] **Step 5: Run tests to verify they pass**
 
 Run: `cd web && npm test`
-Expected: PASS — 7 tests, 0 failures.
+Expected: PASS — 8 tests, 0 failures.
 
 - [ ] **Step 6: Add the web test step to CI**
 

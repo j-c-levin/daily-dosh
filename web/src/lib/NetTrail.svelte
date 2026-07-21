@@ -63,7 +63,9 @@
     <svg viewBox="0 0 {width} {H}" width="100%" height={H} preserveAspectRatio="none"
       role="img" aria-label={ariaLabel}>
       <defs>
-        <!-- The trail is drawn twice, clipped at the zero line: green above, red below. -->
+        <!-- The trail is drawn twice, clipped at the zero line: green above, red below.
+             Each rect extends a full H beyond the plot on its far side as generous slack
+             for stroke width and dot overflow. -->
         <clipPath id="nt-above-{uid}"><rect x="0" y={-H} width={width} height={zeroY + H} /></clipPath>
         <clipPath id="nt-below-{uid}"><rect x="0" y={zeroY} width={width} height={H * 2} /></clipPath>
       </defs>
