@@ -26,6 +26,10 @@ jobs:
         working-directory: api
         run: npm test
 
+      - name: Run web tests
+        working-directory: web
+        run: npm test
+
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
