@@ -3,7 +3,7 @@
   import { api } from './lib/api.js';
   import { money, shortTime } from './lib/format.js';
   import TransactionRow from './lib/TransactionRow.svelte';
-  import BurnDown from './lib/BurnDown.svelte';
+  import NetTrail from './lib/NetTrail.svelte';
 
   const KEY = 'dd_storage_key';
   const REDIRECT_PATH = '/oauth/redirect';
@@ -322,14 +322,15 @@
       {/if}
     </section>
 
-    <section class="card burndown-card">
-      <BurnDown
+    <section class="card trail-card">
+      <NetTrail
         daysInPeriod={state.period.daysInPeriod}
         paydayDate={state.period.paydayDate}
-        disposablePot={state.period.disposablePot}
         daysElapsed={state.daysElapsed}
+        dailyAllowance={state.dailyAllowance}
         transactions={state.transactions}
-        over={state.safeToSpend < 0}
+        safeToSpend={state.safeToSpend}
+        projectedOutcome={state.projectedOutcome}
       />
     </section>
 
@@ -394,7 +395,7 @@
   .hero.over .hero-value {
     color: var(--bad);
   }
-  .burndown-card {
+  .trail-card {
     margin-bottom: 18px;
   }
   .stats {
