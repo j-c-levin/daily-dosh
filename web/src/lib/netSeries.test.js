@@ -99,6 +99,19 @@ test('daysElapsed past the period end clamps to daysInPeriod', () => {
   assert.equal(series.at(-1), 200);
 });
 
+test('spend after the clamped period end still peels off the whole tail', () => {
+  const series = buildNetSeries({
+    ...base,
+    daysInPeriod: 2,
+    daysElapsed: 5,
+    transactions: [tx('2026-07-01', -250), tx('2026-07-05', -100)], // offsets 0 and 4
+    safeToSpend: -150, // spend to date = 2×100 − (−150) = 350
+  });
+  // Index 1 excludes everything at offset ≥ 1 — including the post-period −100 at
+  // offset 4, which sits beyond lastDay: cumSpend(1) = 350 − 100 = 250 → net = −150.
+  assert.deepEqual(series, [0, -150, -150]);
+});
+
 test("today's spend does not alter yesterday's point", () => {
   const series = buildNetSeries({
     ...base,

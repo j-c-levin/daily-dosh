@@ -43,20 +43,24 @@ export function buildNetSeries({
   }
 
   // What the balance model says was spent since payday, in total: safeToSpend =
-  // lastDay × dailyAllowance − spentToday, so spentToday is the residual regardless of
+  // lastDay × dailyAllowance − spendToDate, so spendToDate is the residual regardless of
   // how the transaction list's day-by-day shape lines up with it.
-  const spentToday = lastDay * dailyAllowance - safeToSpend;
+  const spendToDate = lastDay * dailyAllowance - safeToSpend;
 
   // Walk backward from "now" (index lastDay): index d excludes everything at day-offset
   // ≥ d, so each step down peels that day-offset's transactions off the running spend
   // total. Whatever can't be peeled off — a payday-day pot sweep, or any other drift —
   // simply rides all the way down into index 0, the opening baseline.
   const series = new Array(lastDay + 1).fill(0);
-  let tailSum = byOffset.get(lastDay) || 0; // Σ amount for offset ≥ lastDay
-  series[lastDay] = lastDay * dailyAllowance - (spentToday + tailSum);
+  // Seed with everything at offset ≥ lastDay: when the period has rolled past its end
+  // (daysElapsed > daysInPeriod), real transactions exist beyond the clamped last day.
+  let tailSum = 0;
+  for (const [off, amount] of byOffset) {
+    if (off >= lastDay) tailSum += amount;
+  }
   for (let d = lastDay - 1; d >= 1; d--) {
     tailSum += byOffset.get(d) || 0; // now Σ amount for offset ≥ d
-    series[d] = d * dailyAllowance - (spentToday + tailSum);
+    series[d] = d * dailyAllowance - (spendToDate + tailSum);
   }
 
   // Today's point comes from the live balance, not the transaction list (also covers the
