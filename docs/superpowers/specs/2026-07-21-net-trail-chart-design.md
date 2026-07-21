@@ -33,7 +33,19 @@ i.e. it is the end-of-previous-day position (the server counts payday itself
 as day 1, so payday-day spend at offset 0 lands in index 1). This keeps
 today's spend from retroactively dragging down yesterday's already-drawn dot.
 
-- Day 0 (payday) is 0 by definition.
+History is reconstructed **backward** from the balance-derived `safeToSpend`,
+not forward from zero. The hero's `spent` is snapshotted from the balance
+*after* the user sweeps their salary into pots on payday
+(`spent = pot − balance + ignoredAdjustment`), so a forward sum over the
+transaction list would count that pot sweep as day-1 spend — a false trench
+all month, cliffing back to the real value at the pinned endpoint. Walking
+backward instead peels off each day's known transactions from the running
+total; anything unexplained (the pot sweep, or any other balance/transaction
+drift) rides down into the opening baseline — where the balance model puts
+it — instead of being painted as spending on a day it never happened.
+
+- Day 0 (payday) is 0 by definition — the opening baseline that absorbs
+  unexplained pot sweeps and drift.
 - The y-axis baseline is a horizontal **net-zero line**: above = saving,
   below = overspending. Ending the month at 0 means you spent exactly what you
   earned.
@@ -45,10 +57,12 @@ today's spend from retroactively dragging down yesterday's already-drawn dot.
 ### Today's dot (live)
 
 The final point of the trail is pinned to the server's balance-derived
-`state.safeToSpend`, so the chart always ends exactly where the hero number
-says. Historical days remain transaction-derived with unchanged rules:
-`ignored` and `isPayday` transactions excluded, credits net against spend,
-UK civil dates for day bucketing.
+`state.safeToSpend` — both because that's the whole point of walking
+backward from it, and as an explicit safety net (it also handles the
+`daysElapsed === 0` single-point case, where the backward walk has nothing
+to peel off). Historical days are derived by peeling transactions off that
+endpoint, day by day, going backward: `ignored` and `isPayday` transactions
+excluded, credits net against spend, UK civil dates for day bucketing.
 
 ### Colour
 

@@ -121,10 +121,27 @@ test('last point is pinned to safeToSpend even when transactions disagree', () =
     transactions: [tx('2026-07-02', -100)],
     safeToSpend: -6230,
   });
-  // Index 2 covers offsets 0..1, so transaction-derived net(2) would be 200 − 100 = 100,
-  // but the live balance says −6230. Hero wins regardless.
+  // Unexplained drift between the transaction list and the live balance (here £63.30)
+  // is attributed to the opening baseline, where the balance model puts it.
   assert.equal(series.at(-1), -6230);
-  assert.deepEqual(series.slice(0, -1), [0, 100]);
+  assert.deepEqual(series.slice(0, -1), [0, -6230]);
+});
+
+test('payday-day pot sweeps land in the baseline, not painted as spending', () => {
+  // The user sweeps £1400 into pots right after payday lands, then the pot is
+  // snapshotted. The hero never counts the sweep as spend — the trail must not either.
+  const series = buildNetSeries({
+    ...base,
+    daysElapsed: 3,
+    transactions: [
+      tx('2026-07-01', 150000, { isPayday: true }),
+      tx('2026-07-01', -140000), // pot sweep, same day as payday
+      tx('2026-07-03', -250), // real spend today
+    ],
+    safeToSpend: 50,
+  });
+  // Hero history: nothing spent until today. [0, 100, 200, 50] — no £1400 trench.
+  assert.deepEqual(series, [0, 100, 200, 50]);
 });
 
 test('payday itself (daysElapsed 0) is a single point pinned to safeToSpend', () => {
@@ -173,8 +190,18 @@ Create `web/src/lib/netSeries.js`:
 ```js
 // Per-day net position for the trail chart: net(d) = d × dailyAllowance − cumulativeSpend(d).
 // Zero means "spent exactly what you've earned so far"; above zero is saving, below is
-// overspending. The final (today) point is pinned to the balance-derived safeToSpend so
-// the chart always ends exactly where the hero number says.
+// overspending.
+//
+// History is reconstructed BACKWARD from the live balance-derived position, not forward
+// from zero. The hero's spend figure comes from the balance (`spent = pot − balance +
+// ignoredAdjustment`, see api/index.mjs `withBalance`), whose baseline is snapshotted
+// AFTER the user sweeps their salary into pots on payday. A forward sum over the
+// transaction list would count that pot sweep (and any other payday-day transfers) as
+// day-1 spend, painting a false trench that the pinned final point then cliffs back out
+// of. Walking backward from `safeToSpend` instead peels off each day's known spend as we
+// go, so anything unexplained — the pot sweep, or any other balance/transaction drift —
+// is left sitting in the opening baseline, exactly where the balance model puts it,
+// rather than being painted as spending on a day it never happened.
 //
 // Index d is the position at the END of calendar day-offset d−1 from payday (the server
 // counts payday itself as day 1). So payday-day spend (offset 0) lands in index 1, and
@@ -196,25 +223,34 @@ export function buildNetSeries({
   const dayOffset = (dateStr) =>
     Math.round((new Date(dateStr) - new Date(paydayDate)) / 86400000);
 
-  // Net spend per day-offset from payday: credits net against spend, payday itself excluded.
-  const byDay = new Map();
+  // Raw amount per day-offset from payday (negative for debits), payday itself and
+  // ignored transactions excluded. Credits net against spend within a day.
+  const byOffset = new Map();
   for (const t of transactions) {
     if (t.ignored || t.isPayday) continue;
     const d = dayOffset(londonDate(t.created));
-    byDay.set(d, (byDay.get(d) || 0) - t.amount);
+    byOffset.set(d, (byOffset.get(d) || 0) + t.amount);
   }
 
-  // Index d covers spend through the end of calendar day-offset d−1, so we accumulate the
-  // PREVIOUS day's bucket before pushing: today's spend must not retroactively move
-  // yesterday's point. Day-0 spend (payday itself) rolls into index 1, not index 0.
-  let spent = 0;
-  const series = [0];
-  for (let d = 1; d <= lastDay; d++) {
-    spent += byDay.get(d - 1) || 0;
-    series.push(d * dailyAllowance - spent);
+  // What the balance model says was spent since payday, in total: safeToSpend =
+  // lastDay × dailyAllowance − spentToday, so spentToday is the residual regardless of
+  // how the transaction list's day-by-day shape lines up with it.
+  const spentToday = lastDay * dailyAllowance - safeToSpend;
+
+  // Walk backward from "now" (index lastDay): index d excludes everything at day-offset
+  // ≥ d, so each step down peels that day-offset's transactions off the running spend
+  // total. Whatever can't be peeled off — a payday-day pot sweep, or any other drift —
+  // simply rides all the way down into index 0, the opening baseline.
+  const series = new Array(lastDay + 1).fill(0);
+  let tailSum = byOffset.get(lastDay) || 0; // Σ amount for offset ≥ lastDay
+  series[lastDay] = lastDay * dailyAllowance - (spentToday + tailSum);
+  for (let d = lastDay - 1; d >= 1; d--) {
+    tailSum += byOffset.get(d) || 0; // now Σ amount for offset ≥ d
+    series[d] = d * dailyAllowance - (spentToday + tailSum);
   }
 
-  // Today's point comes from the live balance, not the transaction list.
+  // Today's point comes from the live balance, not the transaction list (also covers the
+  // lastDay === 0 single-point case, where the loop above never runs).
   series[series.length - 1] = safeToSpend;
   return series;
 }
@@ -225,7 +261,7 @@ Note: when `lastDay` is 0 the series is the single element `[safeToSpend]` — t
 - [ ] **Step 5: Run tests to verify they pass**
 
 Run: `cd web && npm test`
-Expected: PASS — 8 tests, 0 failures.
+Expected: PASS — 9 tests, 0 failures.
 
 - [ ] **Step 6: Add the web test step to CI**
 

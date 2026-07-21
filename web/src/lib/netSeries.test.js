@@ -69,10 +69,12 @@ test('last point is pinned to safeToSpend even when transactions disagree', () =
     transactions: [tx('2026-07-02', -100)],
     safeToSpend: -6230,
   });
-  // Index 2 covers offsets 0..1, so transaction-derived net(2) would be 200 − 100 = 100,
-  // but the live balance says −6230. Hero wins regardless.
+  // Unexplained drift between the transaction list and the live balance (here £63.30)
+  // is attributed to the opening baseline, where the balance model puts it: walking
+  // backward from safeToSpend, spentToday = 200 − (−6230) = 6430; offset-1 spend (−100)
+  // peels off for index 1, leaving 6330 unexplained in the baseline: net(1) = 100 − 6330.
   assert.equal(series.at(-1), -6230);
-  assert.deepEqual(series.slice(0, -1), [0, 100]);
+  assert.deepEqual(series.slice(0, -1), [0, -6230]);
 });
 
 test('payday itself (daysElapsed 0) is a single point pinned to safeToSpend', () => {
@@ -105,5 +107,22 @@ test("today's spend does not alter yesterday's point", () => {
     safeToSpend: 50,
   });
   // Yesterday (index 2) still shows the position the hero showed that day: +200.
+  assert.deepEqual(series, [0, 100, 200, 50]);
+});
+
+test('payday-day pot sweeps land in the baseline, not painted as spending', () => {
+  // The user sweeps £1400 into pots right after payday lands, then the pot is
+  // snapshotted. The hero never counts the sweep as spend — the trail must not either.
+  const series = buildNetSeries({
+    ...base,
+    daysElapsed: 3,
+    transactions: [
+      tx('2026-07-01', 150000, { isPayday: true }),
+      tx('2026-07-01', -140000), // pot sweep, same day as payday
+      tx('2026-07-03', -250), // real spend today
+    ],
+    safeToSpend: 50,
+  });
+  // Hero history: nothing spent until today. [0, 100, 200, 50] — no £1400 trench.
   assert.deepEqual(series, [0, 100, 200, 50]);
 });
