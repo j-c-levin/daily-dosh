@@ -69,8 +69,8 @@ test('last point is pinned to safeToSpend even when transactions disagree', () =
     transactions: [tx('2026-07-02', -100)],
     safeToSpend: -6230,
   });
-  // The offset-1 spend hasn't rolled into index 2 yet (that happens next day); transaction-
-  // derived net(2) would be 100, but the live balance says −6230. Hero wins regardless.
+  // Index 2 covers offsets 0..1, so transaction-derived net(2) would be 200 − 100 = 100,
+  // but the live balance says −6230. Hero wins regardless.
   assert.equal(series.at(-1), -6230);
   assert.deepEqual(series.slice(0, -1), [0, 100]);
 });
