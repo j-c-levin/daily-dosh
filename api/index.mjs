@@ -440,6 +440,16 @@ export async function handler(event) {
         if (path === '/api/recurring' && method === 'POST') return await handleRecurring(event, user);
       } catch (e) {
         if (e.code === 'reauth') return json(200, { status: 'reauth' });
+        // Refresh can still succeed after Monzo has revoked data consent
+        // (app revocation, 90-day SCA re-consent expiry). The token is then
+        // valid but every data call answers 401/403, e.g.
+        // `forbidden.insufficient_permissions`. That's a reconnect, not a
+        // crash — send the frontend back to Connect Monzo. (The initial
+        // never-approved case is already mapped to `awaiting_approval`
+        // inside handleState and never reaches here.)
+        if (e instanceof MonzoError && (e.status === 401 || e.status === 403)) {
+          return json(200, { status: 'reauth' });
+        }
         throw e;
       }
     }

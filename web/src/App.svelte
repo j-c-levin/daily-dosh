@@ -11,6 +11,7 @@
   let storageKey = localStorage.getItem(KEY);
   let phase = 'loading'; // loading | connect | callback | data | error
   let state = null; // server payload when phase === 'data'
+  let wasReauth = false;
   let error = '';
   let employerInput = '';
   let busy = false;
@@ -53,6 +54,7 @@
       if (state.status === 'reauth') {
         localStorage.removeItem(KEY);
         storageKey = null;
+        wasReauth = true;
         phase = 'connect';
       }
     } catch (e) {
@@ -188,6 +190,9 @@
     <div class="center">
       <h1 class="brand">Daily&nbsp;Dosh</h1>
       <p class="muted">Your spending money for today, worked out from payday.</p>
+      {#if wasReauth}
+        <p class="muted">Your Monzo connection expired or was revoked — reconnect to continue.</p>
+      {/if}
       <button class="btn" on:click={connect}>Connect Monzo</button>
     </div>
 
