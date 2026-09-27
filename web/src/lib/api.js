@@ -8,7 +8,10 @@ async function req(path, opts = {}) {
   });
   const text = await res.text();
   const body = text ? JSON.parse(text) : {};
-  if (!res.ok) throw new Error(body.error || res.statusText);
+  if (!res.ok) {
+    const detail = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail ?? '');
+    throw new Error(detail ? `${body.error || res.statusText}: ${detail.slice(0, 300)}` : (body.error || res.statusText));
+  }
   return body;
 }
 
