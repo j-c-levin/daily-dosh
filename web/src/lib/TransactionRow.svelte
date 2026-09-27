@@ -3,26 +3,30 @@
   export let tx;
   export let onToggle;
   export let onRecur = null;
+  // Called when a credit (or the payday row) is tapped — opens the Hide/Payday sheet.
+  export let onCredit = null;
 </script>
 
 {#if tx.isPayday}
   <div class="row payday">
-    <span class="icon">
-      {#if tx.logo}
-        <img src={tx.logo} alt="" />
-      {:else}
-        <span class="emoji">{tx.emoji || '💰'}</span>
-      {/if}
-    </span>
-    <span class="meta">
-      <span class="name">{tx.description}</span>
-      <span class="date muted">{shortDate(tx.created)} · payday</span>
-    </span>
-    <span class="amount credit">{money(tx.amount, { sign: true })}</span>
+    <button class="tap" on:click={() => onCredit?.(tx)} aria-label="Payday options">
+      <span class="icon">
+        {#if tx.logo}
+          <img src={tx.logo} alt="" />
+        {:else}
+          <span class="emoji">{tx.emoji || '💰'}</span>
+        {/if}
+      </span>
+      <span class="meta">
+        <span class="name">{tx.description}</span>
+        <span class="date muted">{shortDate(tx.created)} · payday · tap to re-sync</span>
+      </span>
+      <span class="amount credit">{money(tx.amount, { sign: true })}</span>
+    </button>
   </div>
 {:else}
   <div class="row" class:ignored={tx.ignored}>
-    <button class="tap" on:click={() => onToggle(tx.id)}>
+    <button class="tap" on:click={() => (tx.amount > 0 && onCredit ? onCredit(tx) : onToggle(tx.id))}>
       <span class="icon">
         {#if tx.logo}
           <img src={tx.logo} alt="" />

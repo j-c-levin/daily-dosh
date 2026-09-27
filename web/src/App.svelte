@@ -120,6 +120,25 @@
   const dismissPayday = () => action(() => api.dismissPayday(storageKey, state.payday.id));
   const toggleIgnore = (id) => action(() => api.toggleIgnore(storageKey, id));
   const toggleRecurring = (id) => action(() => api.toggleRecurring(storageKey, id));
+  const syncPot = () => action(() => api.syncPot(storageKey));
+
+  // Credit action sheet: tapping any credit (or the payday row itself) offers
+  // Hide (ignore-toggle) or Payday (mark-payday: pots presumed sorted, current
+  // balance snapshotted as the pot). Re-tapping re-runs mark-payday, so a
+  // premature tap is fixed by tapping again.
+  let creditTx = null;
+  const openCredit = (tx) => { creditTx = tx; };
+  const closeCredit = () => { creditTx = null; };
+  const hideCredit = async () => {
+    const id = creditTx.id;
+    creditTx = null;
+    await action(() => api.toggleIgnore(storageKey, id));
+  };
+  const markPayday = async () => {
+    const id = creditTx.id;
+    creditTx = null;
+    await action(() => api.markPayday(storageKey, id));
+  };
 
   function openReset() {
     const p = state?.period;
@@ -169,6 +188,19 @@
       })
     );
     showReset = false;
+  }
+
+  // Fill the pot field with the live main-account balance (one tap).
+  async function useCurrentBalance() {
+    busy = true;
+    try {
+      const s = await api.state(storageKey);
+      if (s.status === 'ready') resetPot = (s.currentBalance / 100).toFixed(2);
+    } catch (e) {
+      dayError = e.message;
+    } finally {
+      busy = false;
+    }
   }
 
   function disconnect() {
@@ -248,6 +280,9 @@
         <span class="muted small">Spending pot (£)</span>
         <input type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"
           bind:value={resetPot} />
+        <button class="btn secondary" disabled={busy} on:click={useCurrentBalance}>
+          Set to current balance
+        </button>
       </label>
       <label class="field">
         <span class="muted small">End date (next payday)</span>
@@ -346,17 +381,34 @@
       <div><span class="muted small">Spent so far</span><b>{money(state.spent)}</b></div>
       <div><span class="muted small">In your account</span><b>{money(state.currentBalance)}</b></div>
     </section>
+    <button class="btn secondary" disabled={busy} on:click={syncPot}>Set budget to current balance</button>
 
     <section class="card list">
-      <h3>This month <span class="muted small">· tap to ignore</span></h3>
+      <h3>This month <span class="muted small">· tap to ignore · tap a credit for options</span></h3>
       {#if state.transactions.length}
         {#each state.transactions as tx (tx.id)}
-          <TransactionRow {tx} onToggle={toggleIgnore} onRecur={toggleRecurring} />
+          <TransactionRow {tx} onToggle={toggleIgnore} onRecur={toggleRecurring} onCredit={openCredit} />
         {/each}
       {:else}
         <p class="muted">No transactions since payday.</p>
       {/if}
     </section>
+
+    {#if creditTx}
+      <div class="sheet-backdrop" on:click={closeCredit}>
+        <div class="sheet" on:click|stopPropagation>
+          <h3>{creditTx.description}</h3>
+          <p class="muted">{money(creditTx.amount, { sign: true })} · tap what this credit is</p>
+          <button class="btn" disabled={busy} on:click={markPayday}>
+            {creditTx.isPayday ? 'Re-sync as payday (pots sorted)' : 'Payday — pots sorted'}
+          </button>
+          {#if !creditTx.isPayday}
+            <button class="btn secondary" disabled={busy} on:click={hideCredit}>Hide</button>
+          {/if}
+          <button class="btn secondary" disabled={busy} on:click={closeCredit}>Cancel</button>
+        </div>
+      </div>
+    {/if}
   {/if}
 </main>
 
@@ -423,6 +475,26 @@
   .stats b {
     font-size: 17px;
     font-variant-numeric: tabular-nums;
+  }
+  .sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: flex-end;
+    z-index: 50;
+  }
+  .sheet {
+    width: 100%;
+    background: var(--surface);
+    border-radius: 18px 18px 0 0;
+    padding: 20px 18px calc(20px + env(safe-area-inset-bottom));
+  }
+  .sheet h3 {
+    margin: 0 0 4px;
+  }
+  .sheet .btn {
+    margin-top: 10px;
   }
   .small {
     font-size: 12.5px;

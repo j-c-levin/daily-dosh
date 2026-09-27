@@ -26,6 +26,10 @@ export const api = {
   confirmBuckets: (key) => req('/api/confirm-buckets', { method: 'POST', headers: auth(key) }),
   dismissPayday: (key, transactionId) =>
     req('/api/dismiss-payday', { method: 'POST', headers: auth(key), body: JSON.stringify({ transactionId }) }),
+  markPayday: (key, transactionId) =>
+    req('/api/mark-payday', { method: 'POST', headers: auth(key), body: JSON.stringify({ transactionId }) }),
+  syncPot: (key) =>
+    req('/api/sync-pot', { method: 'POST', headers: auth(key) }),
   reset: (key, body) =>
     req('/api/reset', { method: 'POST', headers: auth(key), body: JSON.stringify(body) }),
   setEmployer: (key, employerName) =>

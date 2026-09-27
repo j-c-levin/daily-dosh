@@ -300,6 +300,50 @@ async function handleConfirmBuckets(user) {
   return handleStateWithBalance(user);
 }
 
+/**
+ * Mark any credit transaction as payday. Pots are presumed already sorted:
+ * the current main-account balance is snapshotted as the disposable pot and
+ * the period is rebuilt from the transaction's date. Re-tapping re-snapshots
+ * (new end date + new balance), so a premature tap is fixed by tapping again.
+ */
+async function handleMarkPayday(event, user) {
+  const { transactionId } = parseBody(event);
+  if (!transactionId) return json(400, { error: 'transactionId required' });
+  user = await ensureAccessToken(user);
+  user = await ensureAccount(user);
+
+  const all = await getTransactions(user.accessToken, user.accountId, lookbackIso());
+  const tx = (all.transactions ?? []).find((t) => t.id === transactionId);
+  if (!tx) return json(400, { error: 'transaction not found' });
+  if (tx.amount <= 0) return json(400, { error: 'only credits can be payday' });
+
+  // Snapshot the main-account balance *now* — whatever remains after sweeping
+  // into pots is this month's spending money.
+  const balance = await getBalance(user.accessToken, user.accountId);
+  user.period = {
+    ...buildPeriod(tx.created.slice(0, 10), balance.balance),
+    paydayTransactionId: tx.id,
+    paydayAt: tx.created,
+  };
+  // The payday credit must never be hidden or dismissed.
+  user.dismissedPaydayIds = (user.dismissedPaydayIds ?? []).filter((id) => id !== tx.id);
+  user.ignoredTransactionIds = (user.ignoredTransactionIds ?? []).filter((id) => id !== tx.id);
+  await saveUser(user);
+
+  return handleStateWithBalance(user);
+}
+
+/** One-tap "set budget to current balance": keep the dates, re-snapshot the pot. */
+async function handleSyncPot(user) {
+  if (!user.period) return json(400, { error: 'no period to sync' });
+  user = await ensureAccessToken(user);
+  user = await ensureAccount(user);
+  const balance = await getBalance(user.accessToken, user.accountId);
+  user.period.disposablePot = balance.balance;
+  await saveUser(user);
+  return handleStateWithBalance(user);
+}
+
 async function handleReset(event, user) {
   const { startDate, endDate, potAmount, paydayTransactionId, paydayAt } = parseBody(event);
   if (!startDate || !endDate || potAmount == null) {
@@ -416,6 +460,8 @@ export async function handler(event) {
       '/api/day',
       '/api/confirm-buckets',
       '/api/dismiss-payday',
+      '/api/mark-payday',
+      '/api/sync-pot',
       '/api/reset',
       '/api/settings',
       '/api/ignore',
@@ -434,6 +480,8 @@ export async function handler(event) {
         if (path === '/api/day') return await handleDay(event, user);
         if (path === '/api/confirm-buckets' && method === 'POST') return await handleConfirmBuckets(user);
         if (path === '/api/dismiss-payday' && method === 'POST') return await handleDismissPayday(event, user);
+        if (path === '/api/mark-payday' && method === 'POST') return await handleMarkPayday(event, user);
+        if (path === '/api/sync-pot' && method === 'POST') return await handleSyncPot(user);
         if (path === '/api/reset' && method === 'POST') return await handleReset(event, user);
         if (path === '/api/settings' && method === 'POST') return await handleSettings(event, user);
         if (path === '/api/ignore' && method === 'POST') return await handleIgnore(event, user);
