@@ -193,7 +193,9 @@
 
   {:else if phase === 'error'}
     <div class="center">
-      <p class="bad">{error}</p>
+      <p class="bad" style="overflow-wrap:anywhere">{error}</p>
+      <p class="muted small">Paste this text when reporting the issue — it contains the cause.</p>
+      <button class="btn secondary" on:click={() => navigator.clipboard?.writeText(error)}>Copy error</button>
       <button class="btn secondary" on:click={() => location.assign('/')}>Try again</button>
     </div>
 
